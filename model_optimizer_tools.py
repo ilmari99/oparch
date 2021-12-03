@@ -18,4 +18,3 @@ def test_learning_speed(model, x_train, y_train,samples=500):
     )
     return cb_loss.loss_on_epoch_end
 
-
