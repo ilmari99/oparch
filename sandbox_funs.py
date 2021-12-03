@@ -2,7 +2,7 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 def get_image_generators_from_path(training_path, validation_path):
     target_size = (180,180)
-    batch_size = 16
+    batch_size = 8
     class_mode = "binary"
     train_datagen = ImageDataGenerator(rescale=1 / 255)
     validation_datagen = ImageDataGenerator(rescale=1 / 255)

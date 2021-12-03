@@ -6,15 +6,18 @@ import numpy as np
 def test_learning_speed(model, x_train, y_train,samples=500):
     cb_loss = ccb.loss_callback()
     model.build(np.shape(x_train))
-    model.compile(loss='binary_crossentropy',
-                  optimizer=tf.keras.optimizers.Adam(learning_rate=0.001),
+    model.compile(loss=tf.keras.losses.binary_crossentropy,
+                  optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.01),
                   metrics=['accuracy'])
-    model.fit(
+    hist = model.fit(
         x_train[:samples], y_train[:samples],
         epochs=1,
         verbose=2,
-        batch_size=10,
+        validation_data=(x_train[samples:-1],y_train[samples:-1]),
+        batch_size=16,
         callbacks=[cb_loss],
+        shuffle=True
     )
-    return cb_loss.loss_on_epoch_end
+    #cb_loss.plot_loss()
+    return hist.history["val_loss"][0]
 
