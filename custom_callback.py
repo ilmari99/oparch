@@ -13,7 +13,6 @@ class loss_callback(tf.keras.callbacks.Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         self.loss_on_epoch_end = logs["loss"]
-        print(f"Loss array: {self.loss_array}")
 
     def plot_loss(self):
         plt.plot(range(len(self.loss_array)), self.loss_array)
