@@ -37,9 +37,7 @@ if __name__ == '__main__':
     cb1 = ccb.loss_callback()
     model = mod_op.get_model(x_train, y_train)
     print("The returned model:")
-    model.compile(optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.001),
-                  loss=tf.keras.losses.binary_crossentropy,
-                  metrics=["accuracy"])
+    model = mot.build_and_compile(model,np.shape(x_train))
     model.fit(
         x_train, y_train,
         epochs=10,

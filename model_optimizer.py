@@ -26,35 +26,42 @@ def get_model(x_train, y_train):
         tf.keras.layers.Dense(1,activation="sigmoid")
               ]
     model = tf.keras.models.Sequential(layer_list)
-    model.build(np.shape(x_train))
+    #model.build(np.shape(x_train))
     best_loss = mot.test_learning_speed(model,x_train,y_train)
     best_layers = layer_list
     print(f"Loss on epoch end is {best_loss}")
+    dense_args, loss = get_best_dense_args(x_train, y_train)
+    print(f"Best dense args: nodes: {dense_args[0]}\nActivation: {dense_args[1]}")
+    if(loss<best_loss):
+        new_layer = get_dense_layer(dense_args)
+        layer_list = get_last_layers()
+        layer_list.insert(1, new_layer)
+        best_layers = layer_list
+        best_loss = loss
+    print(f"Best layers: {best_layers}")
+    return tf.keras.models.Sequential(best_layers)
 
+def get_best_dense_args(x_train, y_train):
     nodes = [2**i for i in range(0,6)]
     activations = list(constants.ACTIVATION_FUNCTIONS.values())
+    best_loss = 100
+    best_dense_args=[]
     for activation in activations:
         for node_amount in nodes:
-            layer = get_dense_layer([node_amount,activation])
-            layer_list = get_last_layers()
+            dense_args=[node_amount,activation]
+            layer = get_dense_layer(dense_args)
+            
+            layer_list = get_last_layers() #Requires a Flatten layer at index 0
+            
             layer_list.insert(1,layer)
             model = tf.keras.models.Sequential(layer_list)
-            model.build(np.shape(x_train))
+            #model.build(np.shape(x_train))
+            print(f"Nodes: {dense_args[0]}\nActivation: {dense_args[1]}.......")
             loss = mot.test_learning_speed(model,x_train,y_train)
-            print(f"Nodes: {node_amount}\nActivation: {activation}")
-            print(f"Loss on epoch end is {loss}")
-            if loss>best_loss:
+            print(f"Loss on validation set is {loss}")
+            if loss<best_loss:
                 best_loss = loss
-                best_layers = layer_list
+                best_dense_args=dense_args
                 print(f"This loss is currently the lowest loss.")
             print("\n\n")
-
-
-    # while:
-    # Add a new layer(args).
-    # Create a list with different args as objects.
-    # Test the learning speed of the network.
-    # Save the learning speeds to a list.
-    # if max(learning_speed_list) > current_learning_speed:
-    #     Add the corresponding layer to the model.
-    return tf.keras.models.Sequential(best_layers)
+    return best_dense_args, best_loss

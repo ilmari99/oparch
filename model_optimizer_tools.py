@@ -2,6 +2,7 @@ import custom_callback as ccb
 import tensorflow as tf
 import numpy as np
 import constants
+from sklearn.model_selection import train_test_split
 
 def build_and_compile(model, input_shape):
     """Builds and compiles a Sequential model
@@ -11,15 +12,16 @@ def build_and_compile(model, input_shape):
         input_shape (tuple): A tuple that is used as the input_shape of the model
                              Use for example np.shape(input)
                              
-    doesnt return anything, but builds and compiles the input model
+    Returns: model (tf.keras.Model.Sequential): returns the built model
     """
     model.build(input_shape)
     model.compile(loss=tf.keras.losses.binary_crossentropy,
                   optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.01),
                   metrics=['accuracy'])
+    return model
 
 
-def test_learning_speed(model, x_train, y_train,samples=500):
+def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.2):
     """Tests the learning speed of the model.
        The learning speed is measured by the loss on the validation set
 
@@ -31,14 +33,16 @@ def test_learning_speed(model, x_train, y_train,samples=500):
 
     Returns:
         float: loss on validation set
-    """    
+    """
+    
+    x_train, x_test, y_train, y_test = train_test_split(x_train[0:samples], y_train[0:samples],test_size=0.2)
     cb_loss = ccb.loss_callback()
     build_and_compile(model, np.shape(x_train))
     hist = model.fit(
-        x_train[:samples], y_train[:samples],
+        x_train, y_train,
         epochs=1,
         verbose=2,
-        validation_data=(x_train[samples:-1],y_train[samples:-1]),
+        validation_data=(x_test,y_test),
         batch_size=constants.BATCH_SIZE,
         callbacks=[cb_loss],
         shuffle=True
