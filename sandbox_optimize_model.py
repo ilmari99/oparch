@@ -12,7 +12,6 @@ from sklearn.model_selection import train_test_split
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = "3"
 
-
 if __name__ == '__main__':
 
     #train_generator, validation_generator = own_funs.get_image_generators_from_path("C://Users//ivaht//Downloads//aalto_lut_train_validation//aalto_lut_training",
@@ -32,6 +31,7 @@ if __name__ == '__main__':
         class_mode="binary",
     )
     X, y = pdt.get_x_y_from_img_generator(train_generator)
+    
     x_train, x_test, y_train, y_test = train_test_split(X, y,test_size=0.2)
 
     cb1 = ccb.loss_callback()
@@ -45,7 +45,12 @@ if __name__ == '__main__':
         batch_size=constants.BATCH_SIZE,
         validation_data=(x_test, y_test),
         callbacks=[cb1],
-        shuffle=True
+        shuffle=True,
     )
     model.summary()
+    #pdt.predict_image(model,["C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-0.png","C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-3.png",
+    #                         "C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-6.png","C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-13.png"],
+    #                  target_size=constants.IMAGE_SIZE)
+    
+    
     cb1.plot_loss()

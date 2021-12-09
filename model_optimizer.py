@@ -16,22 +16,23 @@ def get_conv_layer(args):
 def get_last_layers():
     layer_list = [
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(1,activation="sigmoid")
+        #tf.keras.layers.Dense(1,activation="sigmoid")
               ]
     return layer_list
 
+##TODO Should create a class OptimizedModel to more easily set optimized variables of the model
 def get_model(x_train, y_train):
     layer_list = [
         tf.keras.layers.Flatten(),
         tf.keras.layers.Dense(1,activation="sigmoid")
               ]
     model = tf.keras.models.Sequential(layer_list)
-    #model.build(np.shape(x_train))
     best_loss = mot.test_learning_speed(model,x_train,y_train)
     best_layers = layer_list
+    
     print(f"Loss on epoch end is {best_loss}")
     dense_args, loss = get_best_dense_args(x_train, y_train)
-    print(f"Best dense args: nodes: {dense_args[0]}\nActivation: {dense_args[1]}")
+    print(f"Best dense args:\nnodes: {dense_args[0]}\nActivation: {dense_args[1]}")
     if(loss<best_loss):
         new_layer = get_dense_layer(dense_args)
         layer_list = get_last_layers()
@@ -55,9 +56,8 @@ def get_best_dense_args(x_train, y_train):
             
             layer_list.insert(1,layer)
             model = tf.keras.models.Sequential(layer_list)
-            #model.build(np.shape(x_train))
             print(f"Nodes: {dense_args[0]}\nActivation: {dense_args[1]}.......")
-            loss = mot.test_learning_speed(model,x_train,y_train)
+            loss = mot.test_learning_speed(model,x_train,y_train,samples=800)
             print(f"Loss on validation set is {loss}")
             if loss<best_loss:
                 best_loss = loss

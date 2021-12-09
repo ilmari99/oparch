@@ -44,6 +44,7 @@ def get_image_as_array(path, target_size=(300,300)):
     try:
         img = Image.open(path)
     except Exception:
+        print("Image could not be opened.")
         return -1, -1
     img = img.resize(target_size)
     return np.asarray(img), img
@@ -66,9 +67,9 @@ def predict_image(model,image_paths,target_size=(300,300)):
         raise TypeError("Argument image_paths excpects a list")
     for path in image_paths:
         x, img = get_image_as_array(path,target_size=target_size)
-        if(x==-1 and img==-1):
+        if(isinstance(x,int)):
             print(f"Error with path {path}. Skipping image.")
-        x = np.expand_dims(x, axis=0)
+        #x = np.expand_dims(x, axis=0)
         classes = model.predict(x)
         print(f"The probability distribution for picture with path {path} is {classes}")
         img.show()

@@ -34,19 +34,22 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
     Returns:
         float: loss on validation set
     """
-    
+    epochs = 2
+    verbose = 2
     x_train, x_test, y_train, y_test = train_test_split(x_train[0:samples], y_train[0:samples],test_size=0.2)
     cb_loss = ccb.loss_callback()
     build_and_compile(model, np.shape(x_train))
     hist = model.fit(
         x_train, y_train,
-        epochs=1,
-        verbose=2,
+        epochs=epochs,
+        verbose=verbose,
         validation_data=(x_test,y_test),
         batch_size=constants.BATCH_SIZE,
         callbacks=[cb_loss],
         shuffle=True
     )
     #cb_loss.plot_loss()
-    return hist.history["val_loss"][0]
+    if(epochs==1):
+        return cb_loss.loss_on_epoch_end
+    return np.mean(np.diff(cb_loss.loss_on_epoch_end))
 
