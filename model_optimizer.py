@@ -16,7 +16,6 @@ def get_conv2d_layer(args):
 def get_last_layers():
     layer_list = [
         tf.keras.layers.Flatten(),
-        #tf.keras.layers.Dense(1,activation="sigmoid")
               ]
     return layer_list
 
