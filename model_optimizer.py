@@ -23,7 +23,6 @@ def get_last_layers():
 def get_model(x_train, y_train):
     layer_list = [
         tf.keras.layers.Flatten(),
-        #tf.keras.layers.Dense(1,activation="sigmoid")
               ]
     model = tf.keras.models.Sequential(layer_list)
     best_loss = mot.test_learning_speed(model,x_train,y_train)
