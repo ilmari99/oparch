@@ -5,10 +5,10 @@ import custom_callback as ccb
 import constants
 
 def get_dense_layer(args):
-    """args = list = [number of neurons(int), activation function"""
+    """args = list = [number of neurons(int), activation function]"""
     return tf.keras.layers.Dense(args[0],activation=args[1])
 
-def get_conv_layer(args):
+def get_conv2d_layer(args):
     '''args = [filters, kernel_size(tuple), activation]'''
     return tf.keras.layers.Conv2D(args[0],args[1],activation=args[3])
 
@@ -24,7 +24,7 @@ def get_last_layers():
 def get_model(x_train, y_train):
     layer_list = [
         tf.keras.layers.Flatten(),
-        tf.keras.layers.Dense(1,activation="sigmoid")
+        #tf.keras.layers.Dense(1,activation="sigmoid")
               ]
     model = tf.keras.models.Sequential(layer_list)
     best_loss = mot.test_learning_speed(model,x_train,y_train)

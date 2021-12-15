@@ -2,7 +2,6 @@ from PIL import Image
 from keras_preprocessing.image.image_data_generator import ImageDataGenerator
 import numpy as np
 
-
 def get_image_generators_list(paths, batch_size=8, class_mode="binary",target_size=(180,180)):
     generators = []
     for path in paths:

@@ -1,6 +1,6 @@
 import tensorflow as tf
 IMAGE_SIZE = (180,180)
-BATCH_SIZE = 16
+BATCH_SIZE = 6
 ACTIVATION_FUNCTIONS = {
     "relu":tf.keras.activations.relu,
     "tanh":tf.keras.activations.tanh,

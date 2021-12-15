@@ -15,9 +15,9 @@ def build_and_compile(model, input_shape):
     Returns: model (tf.keras.Model.Sequential): returns the built model
     """
     model.build(input_shape)
-    model.compile(loss=tf.keras.losses.binary_crossentropy,
-                  optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.01),
-                  metrics=['accuracy'])
+    model.compile(loss=tf.keras.losses.MeanSquaredError(),
+                  optimizer=tf.keras.optimizers.SGD(),
+                  metrics=["accuracy"])
     return model
 
 
@@ -32,10 +32,12 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
         samples (int, optional): How many samples should be used for the training. Defaults to 500.
 
     Returns:
-        float: loss on validation set
+        float: if epochs == 1 returns the loss on validation set.
+        else returns the average decrease of loss per validation set.
     """
-    epochs = 2
-    verbose = 2
+    samples=len(y_train)
+    epochs = 5
+    verbose = 3
     x_train, x_test, y_train, y_test = train_test_split(x_train[0:samples], y_train[0:samples],test_size=0.2)
     cb_loss = ccb.loss_callback()
     build_and_compile(model, np.shape(x_train))
@@ -49,7 +51,9 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
         shuffle=True
     )
     #cb_loss.plot_loss()
+    
+    #if only one epoch is done, returns the
     if(epochs==1):
         return cb_loss.loss_on_epoch_end
-    return np.mean(np.diff(cb_loss.loss_on_epoch_end))
+    return np.mean(np.diff(cb_loss.relative_improvement))
 
