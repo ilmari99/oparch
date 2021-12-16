@@ -2,6 +2,7 @@ import os
 import zipfile
 import numpy as np
 import tensorflow as tf
+from OptimizedModel import OptimizedModel
 import custom_callback as ccb
 import process_data_tools as pdt
 import model_optimizer as mod_op
@@ -63,7 +64,7 @@ if __name__ == '__main__':
     x_train, x_test, y_train, y_test = train_test_split(x, y,test_size=0.2)
     cb1 = ccb.loss_callback()
     model = mod_op.get_model(x_train, y_train)
-    model = mot.build_and_compile(model,np.shape(x_train))
+    model = OptimizedModel.build_and_compile(model,np.shape(x_train))
     model.fit(
         x_train, y_train,
         epochs=15,
