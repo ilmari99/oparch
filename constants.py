@@ -1,6 +1,8 @@
 import tensorflow as tf
 IMAGE_SIZE = (180,180)
-BATCH_SIZE = 6
+BATCH_SIZE = 16
+LEARNING_METRIC = "RELATIVE_IMPROVEMENT_EPOCH"
+
 ACTIVATION_FUNCTIONS = {
     "relu":tf.keras.activations.relu,
     "tanh":tf.keras.activations.tanh,

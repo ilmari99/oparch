@@ -4,7 +4,7 @@ import numpy as np
 class OptimizedModel:
     layers = []
     loss_fun = tf.keras.losses.MeanSquaredError()
-    optimizer = tf.keras.optimizers.RMSprop()
+    optimizer = tf.keras.optimizers.SGD(learning_rate=0.1)
     loss = 10000
     model = tf.keras.models.Sequential()
     def __init__(self,last_layers,x_data):
@@ -13,8 +13,9 @@ class OptimizedModel:
         self.input_shape = np.shape(x_data)
         
     def get_model(self):
+        self.model = tf.keras.models.Sequential(self.layers)
         self.build_and_compile(self.model,self.input_shape)
-        return tf.keras.models.Sequential(self.layers)
+        return self.model
     
     def set_layers(self, layers):
         self.layers = layers

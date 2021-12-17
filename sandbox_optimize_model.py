@@ -8,6 +8,7 @@ import process_data_tools as pdt
 import model_optimizer as mod_op
 import model_optimizer_tools as mot
 import constants
+import matplotlib.pyplot as plt
 import pandas as pd
 from keras_preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split
@@ -35,7 +36,7 @@ def get_happiness_xy():
     #normalize the values by column
     happiness_norm = happiness / happiness.max(axis=0)
     numeric_norm = numeric_data / numeric_data.max(axis=0)
-    return numeric_norm, happiness_norm
+    return numeric_norm, happiness_norm, happiness
 
 def get_horse_human_xy():
     local_zip = 'C:\\Users\\ivaht\\Downloads\\horse-or-human.zip'
@@ -60,25 +61,36 @@ if __name__ == '__main__':
     #train_generator, validation_generator = own_funs.get_image_generators_from_path("C://Users//ivaht//Downloads//aalto_lut_train_validation//aalto_lut_training",
     #                                                       "C://Users//ivaht//Downloads//aalto_lut_train_validation//aalto_lut_validation")
     
-    x,y = get_happiness_xy()
+    x,y, happiness = get_happiness_xy()
     x_train, x_test, y_train, y_test = train_test_split(x, y,test_size=0.2)
     cb1 = ccb.loss_callback()
-    model = mod_op.get_model(x_train, y_train)
-    model = OptimizedModel.build_and_compile(model,np.shape(x_train))
+    optimized_model = mod_op.get_model(x_train, y_train)#TODO change this function name
+    
+    model = optimized_model.get_model()
+    model.summary()
     model.fit(
         x_train, y_train,
-        epochs=15,
+        epochs=500,
         verbose=2,
         batch_size=constants.BATCH_SIZE,
         validation_data=(x_test, y_test),
         callbacks=[cb1],
         shuffle=True,
     )
-    model.summary()
+    results = model.evaluate(x_test, y_test, constants.BATCH_SIZE)
+    print(f"Test_loss: {results[0]} Test acc: {results[1]}")
+    predictions = model.predict(x)
+    predictions = np.mean(predictions, axis=1)*np.max(happiness)
+    print("Predictions: ", predictions)
+    print("Happiness: ", happiness)
+    plt.plot(list(range(len(predictions))), predictions,label = "predictions")
+    plt.plot(list(range(len(predictions))), happiness, label = "actual")
+    plt.show()
+    #predictions = np.mean(predictions,axis=1)
+    #print(f"Predictions: {predictions*happiness.max(axis=0)}\nActual: {y[[30,7,91]]*happiness.max(axis=0)}")
     #pdt.predict_image(model,["C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-0.png","C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-3.png",
     #                         "C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-6.png","C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-13.png"],
     #                  target_size=constants.IMAGE_SIZE)
-    
     
     cb1.plot_loss()
     

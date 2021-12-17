@@ -39,7 +39,7 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
     OptimizedModel.build_and_compile(model,np.shape(x_train))
     samples=len(y_train)#TODO change to numpy function
     epochs = 5
-    verbose = 3
+    verbose = 2
     x_train, x_test, y_train, y_test = train_test_split(x_train[0:samples], y_train[0:samples],test_size=0.2)
     cb_loss = ccb.loss_callback()
     hist = model.fit(
@@ -55,6 +55,6 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
     
     #if only one epoch is done, returns the
     if(epochs==1):
-        return cb_loss.loss_on_epoch_end
-    return np.mean(np.diff(cb_loss.relative_improvement))
+        return cb_loss.learning_metric["LAST_LOSS"]
+    return cb_loss.learning_metric[constants.LEARNING_METRIC]
 
