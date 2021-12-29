@@ -1,4 +1,6 @@
 import os
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = "3"
 import zipfile
 import numpy as np
 import tensorflow as tf
@@ -12,8 +14,6 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from keras_preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = "3"
 
 def get_happiness_xy():
     csv_data = pd.read_csv("C:\\Users\\ivaht\\Downloads\\PersonalData.csv")
@@ -60,23 +60,35 @@ if __name__ == '__main__':
 
     #train_generator, validation_generator = own_funs.get_image_generators_from_path("C://Users//ivaht//Downloads//aalto_lut_train_validation//aalto_lut_training",
     #                                                       "C://Users//ivaht//Downloads//aalto_lut_train_validation//aalto_lut_validation")
-    
     x,y, happiness = get_happiness_xy()
     x_train, x_test, y_train, y_test = train_test_split(x, y,test_size=0.2)
     cb1 = ccb.loss_callback()
-    optimized_model = mod_op.get_model(x_train, y_train)#TODO change this function name
+    print(f"Input shape: {np.shape(x_train[0])} ")
+    layers = [ 
+              tf.keras.layers.Dense(1,activation = "tanh"),
+              tf.keras.layers.Dense(1,activation = "tanh"),
+              tf.keras.layers.Dense(1,activation = "tanh"),
+              ]
+    
+    print(f"Config:{layers[0].get_config()}")
+    
+    optimized_model = mod_op.get_optimized_model(x_train, y_train, layers)
     
     model = optimized_model.get_model()
+    learning_speed = mot.test_learning_speed(tf.keras.models.clone_model(model),x_train,y_train)
     model.summary()
     model.fit(
         x_train, y_train,
-        epochs=500,
-        verbose=2,
+        epochs=100,
+        verbose=0,
         batch_size=constants.BATCH_SIZE,
         validation_data=(x_test, y_test),
         callbacks=[cb1],
         shuffle=True,
     )
+    print(f"MODEL INFO (learning_speed={learning_speed}):\nOptimizer: {optimized_model.optimizer.get_config()}\n")
+    print(f"Layers: {optimized_model.layer_configs}\n")
+    print(f"Loss function: {optimized_model.loss_fun}\n")
     results = model.evaluate(x_test, y_test, constants.BATCH_SIZE)
     print(f"Test_loss: {results[0]} Test acc: {results[1]}")
     predictions = model.predict(x)
@@ -85,13 +97,14 @@ if __name__ == '__main__':
     print("Happiness: ", happiness)
     plt.plot(list(range(len(predictions))), predictions,label = "predictions")
     plt.plot(list(range(len(predictions))), happiness, label = "actual")
-    plt.show()
+    #plt.show()
     #predictions = np.mean(predictions,axis=1)
     #print(f"Predictions: {predictions*happiness.max(axis=0)}\nActual: {y[[30,7,91]]*happiness.max(axis=0)}")
     #pdt.predict_image(model,["C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-0.png","C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-3.png",
     #                         "C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-6.png","C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-13.png"],
     #                  target_size=constants.IMAGE_SIZE)
-    
+    plt.figure(2)
     cb1.plot_loss()
+    plt.show()
     
     
