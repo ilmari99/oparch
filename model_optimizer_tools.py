@@ -1,25 +1,10 @@
-from OptimizedModel import OptimizedModel
+import OptimizedModel
 import custom_callback as ccb
 import tensorflow as tf
 import numpy as np
 import constants
+import time
 from sklearn.model_selection import train_test_split
-
-def build_and_compile(model, input_shape):
-    """Builds and compiles a Sequential model
-
-    Args:
-        model (tf.keras.Model.Sequential): Tensorflow model
-        input_shape (tuple): A tuple that is used as the input_shape of the model
-                             Use for example np.shape(input)
-                             
-    Returns: model (tf.keras.Model.Sequential): returns the built model
-    """
-    model.build(input_shape)
-    model.compile(loss=tf.keras.losses.MeanSquaredError(),
-                  optimizer=tf.keras.optimizers.SGD(),
-                  metrics=["accuracy"])
-    return model
 
 
 def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.2):
@@ -34,14 +19,16 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
 
     Returns:
         float: if epochs == 1 returns the loss on validation set.
-        else returns the average decrease of loss per validation set.
+        else returns constants.LOSS_METRIC.
     """
-    OptimizedModel.build_and_compile(model,np.shape(x_train))
-    samples=len(y_train)#TODO change to numpy function
-    epochs = 5
-    verbose = 2
+    if not model.built:
+        OptimizedModel.OptimizedModel.build_and_compile(model,np.shape(x_train))
+    samples = len(y_train)#TODO change to numpy function
+    epochs = 15
+    verbose = 0
     x_train, x_test, y_train, y_test = train_test_split(x_train[0:samples], y_train[0:samples],test_size=0.2)
     cb_loss = ccb.loss_callback()
+    start = time.time()
     hist = model.fit(
         x_train, y_train,
         epochs=epochs,
@@ -51,9 +38,11 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
         callbacks=[cb_loss],
         shuffle=True
     )
+    elapsed_time = time.time() - start
+    print(f"Elapsed time: {elapsed_time}")
     #cb_loss.plot_loss()
     
-    #if only one epoch is done, returns the
+    #if only one epoch is done, returns the last loss
     if(epochs==1):
         return cb_loss.learning_metric["LAST_LOSS"]
     return cb_loss.learning_metric[constants.LEARNING_METRIC]

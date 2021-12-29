@@ -9,12 +9,13 @@ class loss_callback(tf.keras.callbacks.Callback):
     "AVERAGE_LOSS_BATCH":None,
     "RELATIVE_IMPROVEMENT_EPOCH":None,
     "RELATIVE_IMPROVEMENT_BATCH":None,
-    "VALIDATION_LOSS":None,#TODO implement VALIDATION learning metrics
+    "VALIDATION_LOSS":None,
     "VALIDATION_ACCURACY":None,
     }
     
-    def __init__(self):
+    def __init__(self, verbose = 0):
         super().__init__()
+        self.verbose = verbose
         self.loss_array_epoch = []
         self.loss_array_validation = []
         self.accuracy_array_validation = []
@@ -28,7 +29,10 @@ class loss_callback(tf.keras.callbacks.Callback):
         self.learning_metric["RELATIVE_IMPROVEMENT_BATCH"] = np.mean(np.diff(self.loss_array_batch)/self.loss_array_batch[0:-1])
         self.learning_metric["VALIDATION_LOSS"] = np.mean(self.loss_array_validation)
         self.learning_metric["VALIDATION_ACCURACY"] = np.mean(self.accuracy_array_validation)
-        print(f"ITEMS:{self.learning_metric.items()}")
+        if(self.verbose > 0):
+            print(f"ITEMS:{self.learning_metric.items()}")
+            if(self.verbose == 2):
+                self.plot_loss()
 
     def on_train_batch_end(self, batch, logs=None):
         self.loss_array_batch.append(logs["loss"])
