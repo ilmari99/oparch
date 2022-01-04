@@ -16,16 +16,29 @@ def get_conv2d_layer(args: list):
 
 
 def get_optimized_model(x_train: np.ndarray, y_train: np.ndarray, layer_list: list) -> OptimizedModel:
+    """Tests different configurations (optimizer, learning rate, loss function, nodes/layer, activation functions)
+    for a sequential, dense neural network. Returns an OptimizedModel instance.
 
+    Args:
+        x_train (np.ndarray): Feature data
+        y_train (np.ndarray): Observed y data 
+        layer_list (list): list with Layer objects
+
+    Returns:
+        OptimizedModel: [description]
+    """    
     optimized_model = OptimizedModel(layer_list,x_train)
-    #optimized_model.optimize_learning_rate(optimized_model.model,x_train,y_train)
-    model = tf.keras.models.Sequential(layer_list)
-    best_metric = mot.test_learning_speed(model,x_train,y_train)
+    OptimizedModel.optimize_loss_fun(optimized_model.model,x_train,y_train)
+    OptimizedModel.optimize_optimizer(optimized_model.model,x_train,y_train)
+    OptimizedModel.optimize_learning_rate(optimized_model.model,x_train,y_train)
+    best_metric = mot.test_learning_speed(optimized_model.model,x_train,y_train)
     print(f"{constants.LEARNING_METRIC} with default layers was {best_metric}")
-    
-    for index, layer in enumerate(layer_list[:-1]): #TODO No optimization for last
+    layer_configs = [layer.get_config() for layer in layer_list]
+    layer_list = [tf.keras.layers.Dense.from_config(config) for config in layer_configs]
+    for index, layer in enumerate(layer_list[:-1]): #No optimization for last layer
+        index = len(layer_list[:-1]) - index - 1
+        #LAYERIT JO TREENATTU
         opt_dense, opt_metric = get_optimized_dense(index, layer_list, x_train, y_train)
-        #print(f"Best dense args:\nnodes: {dense_args[0]}\nActivation: {dense_args[1]}")
         if(opt_metric<best_metric):
             print(f"Model structure changed.\nSubstituted layer at index {index}:")
             print(f"from: {layer_list[index].get_config()}\n {constants.LEARNING_METRIC}: {best_metric}")
@@ -35,13 +48,13 @@ def get_optimized_model(x_train: np.ndarray, y_train: np.ndarray, layer_list: li
             else:
                 print(f"To: None\n {constants.LEARNING_METRIC}:{opt_metric}")
                 layer_list.pop(index)
+            optimized_model.loss = opt_metric
             best_metric = opt_metric
-     
-    optimized_configs = [layer.get_config() for layer in layer_list]
-    optimized_model.set_layers_from_config(optimized_configs)
-    optimized_model.optimize_loss_fun(optimized_model.model,x_train,y_train)
-    optimized_model.optimize_optimizer(optimized_model.model,x_train,y_train)
-    optimized_model.optimize_learning_rate(optimized_model.model,x_train,y_train)
+        optimized_configs = [layer.get_config() for layer in layer_list]
+        optimized_model.set_layers_from_config(optimized_configs)
+        OptimizedModel.optimize_loss_fun(optimized_model.model,x_train,y_train)
+        OptimizedModel.optimize_optimizer(optimized_model.model,x_train,y_train)
+        OptimizedModel.optimize_learning_rate(optimized_model.model,x_train,y_train)
     return optimized_model
 
 def get_optimized_dense(index, layers, x_train, y_train):
@@ -57,20 +70,28 @@ def get_optimized_dense(index, layers, x_train, y_train):
     model = tf.keras.models.Sequential(layer_list)
     best_metric = mot.test_learning_speed(model,x_train,y_train)
     
+    skip_first = 1
     for activation in activations:
         for node_amount in nodes:
+            #Currently the first metric
             layer_list = [tf.keras.layers.Dense.from_config(config) for config in configs]
             dense_args = [node_amount,activation] #TODO Create a new dense layer by modifying the configs
             layer = get_dense_layer(dense_args)
             layer_list[index] = layer
             model = tf.keras.models.Sequential(layer_list)
-            model.reset_states()
             OptimizedModel.optimize_loss_fun(model,x_train,y_train)
             OptimizedModel.optimize_optimizer(model,x_train,y_train)
             OptimizedModel.optimize_learning_rate(model,x_train,y_train)
             print(f"Nodes: {dense_args[0]}\nActivation: {dense_args[1]}.......")
             metric = mot.test_learning_speed(model, x_train, y_train, samples=800)
             print(f"{constants.LEARNING_METRIC}: {metric}")
+            #TODO: Currently the first tested metric is lower than it should be resulting
+            # in an incorrect output. This is a quick fix to circumvent the problem before it is fixed.
+            # Skipping the first test doesn't matter, if the first configuration is the same as default.
+            if skip_first:
+                skip_first = 0
+                print("Skipping first\n\n")
+                continue
             if metric<best_metric:
                 best_metric = metric
                 best_dense = get_dense_layer(dense_args)
