@@ -10,6 +10,7 @@ class loss_callback(tf.keras.callbacks.Callback):
     "RELATIVE_IMPROVEMENT_EPOCH":None,
     "RELATIVE_IMPROVEMENT_BATCH":None,
     "VALIDATION_LOSS":None,
+    "LAST_VALIDATION_LOSS":None,
     "VALIDATION_ACCURACY":None,
     }
     
@@ -28,6 +29,7 @@ class loss_callback(tf.keras.callbacks.Callback):
         self.learning_metric["RELATIVE_IMPROVEMENT_EPOCH"] = np.mean(np.diff(self.loss_array_epoch)/self.loss_array_epoch[0:-1])
         self.learning_metric["RELATIVE_IMPROVEMENT_BATCH"] = np.mean(np.diff(self.loss_array_batch)/self.loss_array_batch[0:-1])
         self.learning_metric["VALIDATION_LOSS"] = np.mean(self.loss_array_validation)
+        self.learning_metric["LAST_VALIDATION_LOSS"] = self.loss_array_validation[-1]
         self.learning_metric["VALIDATION_ACCURACY"] = np.mean(self.accuracy_array_validation)
         if(self.verbose > 0):
             print(f"ITEMS:{self.learning_metric.items()}")
