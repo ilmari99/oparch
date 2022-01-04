@@ -10,12 +10,20 @@ import process_data_tools as pdt
 import model_optimizer as mod_op
 import model_optimizer_tools as mot
 import constants
+import random
 import matplotlib.pyplot as plt
 import pandas as pd
 from keras_preprocessing.image import ImageDataGenerator
 from sklearn.model_selection import train_test_split
 
 def get_happiness_xy():
+    """Reads a local csv file and returns np arrays. Removes all rows with NaN values.
+
+    Returns:
+        numeric_norm [np.ndarray]: normalized feature data
+        happiness_norm [np.ndarray]: normalized happiness data
+        happiness [np.ndarray]: happiness data
+    """    
     csv_data = pd.read_csv("C:\\Users\\ivaht\\Downloads\\PersonalData.csv")
     happiness = csv_data.pop("How good was the day (1-10)")
     csv_data.__delitem__("Date")
@@ -38,71 +46,69 @@ def get_happiness_xy():
     numeric_norm = numeric_data / numeric_data.max(axis=0)
     return numeric_norm, happiness_norm, happiness
 
-def get_horse_human_xy():
-    local_zip = 'C:\\Users\\ivaht\\Downloads\\horse-or-human.zip'
-    zip_ref = zipfile.ZipFile(local_zip, 'r')
-    zip_ref.extractall('/tmp/horse-or-human')
-    zip_ref.close()
-
-    # Directory with our training horse pictures
-    #train_horse_dir = os.path.join('/tmp/horse-or-human/horses')
-    train_datagen = ImageDataGenerator(rescale=1 / 255)
-    train_generator = train_datagen.flow_from_directory(
-        '/tmp/horse-or-human',
-        target_size=constants.IMAGE_SIZE,
-        batch_size=constants.BATCH_SIZE,
-        class_mode="binary",
-    )
-    X, y = pdt.get_x_y_from_img_generator(train_generator)
-    return X,y
+def y_function(x) -> np.ndarray:
+    y = np.zeros(max(np.shape(x))) #Assumes more training samples than features which should be true
+    print(f"{np.shape(y)}")
+    features = len(x[0])
+    coeffs = np.array([(c+1)*0.5 for c in range(features)])
+    for i,row in enumerate(x):
+            y[i] = np.sum(coeffs*row, axis=0) + random.uniform(-0.2,0.2) #Add some randomness to better see overfitting
+    return y
 
 if __name__ == '__main__':
 
     #train_generator, validation_generator = own_funs.get_image_generators_from_path("C://Users//ivaht//Downloads//aalto_lut_train_validation//aalto_lut_training",
     #                                                       "C://Users//ivaht//Downloads//aalto_lut_train_validation//aalto_lut_validation")
-    x,y, happiness = get_happiness_xy()
-    x_train, x_test, y_train, y_test = train_test_split(x, y,test_size=0.2)
+    #x,y, happiness = get_happiness_xy()
+    np.random.seed(seed=42)
+    
+    x = np.random.rand(300,4) #300 samples with 4 features
+    y = y_function(x)
+    
+    x_max = x.max(axis=0) #Max value by column
+    y_max = y.max(axis=0)
+    
+    x_train, x_test, y_train, y_test = train_test_split(x, y,test_size=0.2, random_state=42)
+    
+    x_train_norm = x_train / x_max
+    y_train_norm = y_train / y_max
+    x_test_norm = x_test / x_max
+    y_test_norm = y_test / y_max
+    
     cb1 = ccb.loss_callback()
-    print(f"Input shape: {np.shape(x_train[0])} ")
     layers = [ 
               tf.keras.layers.Dense(1,activation = "tanh"),
-              tf.keras.layers.Dense(1,activation = "tanh"),
-              tf.keras.layers.Dense(1,activation = "tanh"),
+              tf.keras.layers.Dense(1),
               ]
     
     print(f"Config:{layers[0].get_config()}")
     
-    optimized_model = mod_op.get_optimized_model(x_train, y_train, layers)
+    optimized_model = mod_op.get_optimized_model(x_train_norm, y_train_norm, layers)
     
-    model = optimized_model.get_model()
-    learning_speed = mot.test_learning_speed(tf.keras.models.clone_model(model),x_train,y_train)
+    model = optimized_model.model
+    learning_speed = mot.test_learning_speed(tf.keras.models.clone_model(model),x_train_norm,y_train_norm)
+    OptimizedModel.build_and_compile(model,np.shape(x_train))
     model.summary()
     model.fit(
-        x_train, y_train,
-        epochs=100,
-        verbose=0,
+        x_train_norm, y_train_norm,
+        epochs=30,
+        verbose=2,
         batch_size=constants.BATCH_SIZE,
-        validation_data=(x_test, y_test),
+        validation_data=(x_test_norm, y_test_norm),
         callbacks=[cb1],
         shuffle=True,
     )
     print(f"MODEL INFO (learning_speed={learning_speed}):\nOptimizer: {optimized_model.optimizer.get_config()}\n")
     print(f"Layers: {optimized_model.layer_configs}\n")
     print(f"Loss function: {optimized_model.loss_fun}\n")
-    results = model.evaluate(x_test, y_test, constants.BATCH_SIZE)
+    results = model.evaluate(x_test_norm, y_test_norm, constants.BATCH_SIZE)
     print(f"Test_loss: {results[0]} Test acc: {results[1]}")
-    predictions = model.predict(x)
-    predictions = np.mean(predictions, axis=1)*np.max(happiness)
+    predictions = model.predict(x_test_norm)
+    predictions = np.mean(predictions, axis=1)*y_max #Denormalize
     print("Predictions: ", predictions)
-    print("Happiness: ", happiness)
+    print("Y actual: ", y_test)
     plt.plot(list(range(len(predictions))), predictions,label = "predictions")
-    plt.plot(list(range(len(predictions))), happiness, label = "actual")
-    #plt.show()
-    #predictions = np.mean(predictions,axis=1)
-    #print(f"Predictions: {predictions*happiness.max(axis=0)}\nActual: {y[[30,7,91]]*happiness.max(axis=0)}")
-    #pdt.predict_image(model,["C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-0.png","C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-3.png",
-    #                         "C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-6.png","C:\\Users\\ivaht\\Downloads\\horse-or-human\\horses\\horse01-13.png"],
-    #                  target_size=constants.IMAGE_SIZE)
+    plt.plot(list(range(len(predictions))), y_test, label = "actual")
     plt.figure(2)
     cb1.plot_loss()
     plt.show()
