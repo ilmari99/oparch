@@ -1,14 +1,16 @@
 import tensorflow as tf
 IMAGE_SIZE = (180,180)
 BATCH_SIZE = 16
-LEARNING_METRIC = "RELATIVE_IMPROVEMENT_EPOCH"
+LEARNING_METRIC = "LAST_LOSS" #LAST_LOSS seems to work best
+TEST_EPOCHS = 15
 
 ACTIVATION_FUNCTIONS = {
-    "relu":tf.keras.activations.relu,
-    "tanh":tf.keras.activations.tanh,
     "sigmoid":tf.keras.activations.sigmoid,
+    "linear":None,
+    "tanh":tf.keras.activations.tanh,
+    "exponential":tf.keras.activations.exponential,
+    "relu":tf.keras.activations.relu,
     "elu":tf.keras.activations.elu,
-    "exponential":tf.keras.activations.exponential,    
 }
 
 REGRESSION_LOSS_FUNCTIONS = {
