@@ -13,6 +13,7 @@ class OptimizedModel:
     model = tf.keras.models.Sequential()
     layer_configs = []
     def __init__(self,layers,x_data):
+        tf.random.set_random_seed(42)
         self.layers = layers
         self.model = tf.keras.models.Sequential(self.layers)
         self.input_shape = np.shape(x_data)
@@ -42,8 +43,8 @@ class OptimizedModel:
         return model_clone
     
     @classmethod
-    def optimize_learning_rate(cls, model, x, y):#TODO Does the model always need to be cloned or is model.reset_states() enough?
-        print(f"Optimizing learning rate...")
+    def optimize_learning_rate(cls, model, x, y):
+        #print(f"Optimizing learning rate...")
         def_lr = cls.learning_rate
         base_metric = test_learning_speed(model,x,y)
         model.reset_states()
@@ -52,18 +53,18 @@ class OptimizedModel:
             cls.learning_rate = lr
             metric = test_learning_speed(model,x,y)
             model.reset_states()
-            print(f"Learning rate: {lr}, {constants.LEARNING_METRIC}:{metric}")
+            #print(f"Learning rate: {lr}, {constants.LEARNING_METRIC}:{metric}")
             if(metric<base_metric):
                 def_lr = lr
                 base_metric = metric
         cls.learning_rate = def_lr
-        print(f"Optimized learning_rate: {cls.learning_rate} with {constants.LEARNING_METRIC}:{base_metric}")
+        #print(f"Optimized learning_rate: {cls.learning_rate} with {constants.LEARNING_METRIC}:{base_metric}")
         cls.set_learning_rate(def_lr)
         return def_lr
     
     @classmethod
     def optimize_loss_fun(cls,model,x,y):
-        print(f"Optimizing loss function...")
+        #print(f"Optimizing loss function...")
         def_loss = cls.loss_fun
         base_metric = test_learning_speed(model,x,y)
         model.reset_states()
@@ -73,17 +74,17 @@ class OptimizedModel:
             cls.loss_fun = loss_fun
             metric = test_learning_speed(model,x,y)
             model.reset_states()
-            print(f"Loss function: {type(cls.loss_fun).__name__}, {constants.LEARNING_METRIC}:{metric}")
+            #print(f"Loss function: {type(cls.loss_fun).__name__}, {constants.LEARNING_METRIC}:{metric}")
             if(metric<base_metric):
                 def_loss = loss_fun
                 base_metric = metric
         cls.loss_fun = def_loss
-        print(f"Optimized loss function: {type(cls.loss_fun).__name__}, {constants.LEARNING_METRIC}:{base_metric}")
+        #print(f"Optimized loss function: {type(cls.loss_fun).__name__}, {constants.LEARNING_METRIC}:{base_metric}")
         return def_loss
     
     @classmethod
     def optimize_optimizer(cls,model,x,y):
-        print(f"Optimizing optimizer...")
+        #print(f"Optimizing optimizer...")
         def_optimizer = cls.optimizer
         base_metric = test_learning_speed(model,x,y)
         model.reset_states()
@@ -92,12 +93,12 @@ class OptimizedModel:
             cls.set_learning_rate(cls.learning_rate)
             metric = test_learning_speed(model,x,y)
             model.reset_states()
-            print(f"Optimizer: {cls.optimizer.get_config()}, {constants.LEARNING_METRIC}:{metric}")
+            #print(f"Optimizer: {cls.optimizer.get_config()}, {constants.LEARNING_METRIC}:{metric}")
             if(metric<base_metric):
                 def_optimizer = opt
                 base_metric = metric
         cls.optimizer = def_optimizer
-        print(f"Optimized optimizer: {cls.optimizer.get_config()}, {constants.LEARNING_METRIC}:{base_metric}")
+        #print(f"Optimized optimizer: {cls.optimizer.get_config()}, {constants.LEARNING_METRIC}:{base_metric}")
         return def_optimizer
     
     @classmethod
