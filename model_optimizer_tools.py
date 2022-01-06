@@ -24,26 +24,26 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
     if not model.built:
         OptimizedModel.OptimizedModel.build_and_compile(model,np.shape(x_train))
     samples = len(y_train)#TODO change to numpy function
-    epochs = constants.TEST_EPOCHS
     verbose = 0
     x_train, x_test, y_train, y_test = train_test_split(x_train[0:samples], y_train[0:samples],test_size=0.1, random_state=42)
-    cb_loss = ccb.loss_callback()
+    cb_loss = ccb.loss_callback(samples=y_train.shape[0])
     start = time.time()
     hist = model.fit(
         x_train, y_train,
-        epochs=epochs,
+        epochs=constants.TEST_EPOCHS,
         verbose=verbose,
         validation_data=(x_test,y_test),
         batch_size=constants.BATCH_SIZE,
         callbacks=[cb_loss],
-        shuffle=True
+        shuffle=True,
+        use_multiprocessing=True,
     )
     elapsed_time = time.time() - start
     #print(f"Elapsed time: {elapsed_time}")
     #cb_loss.plot_loss()
     
     #if only one epoch is done, returns the last loss
-    if(epochs==1):
+    if(constants.TEST_EPOCHS==1):
         return cb_loss.learning_metric["LAST_LOSS"]
     return cb_loss.learning_metric[constants.LEARNING_METRIC]
 
