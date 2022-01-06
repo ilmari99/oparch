@@ -37,7 +37,6 @@ def get_optimized_model(x_train: np.ndarray, y_train: np.ndarray, layer_list: li
     layer_list = [tf.keras.layers.Dense.from_config(config) for config in layer_configs]
     for index, layer in enumerate(layer_list[:-1]): #No optimization for last layer
         index = len(layer_list[:-1]) - index - 1
-        #LAYERIT JO TREENATTU
         opt_dense, opt_metric = get_optimized_dense(index, layer_list, x_train, y_train)
         if(opt_metric<best_metric):
             print(f"Model structure changed.\nSubstituted layer at index {index}:")
