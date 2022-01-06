@@ -1,8 +1,9 @@
 import tensorflow as tf
 IMAGE_SIZE = (180,180)
-BATCH_SIZE = 16
+BATCH_SIZE = 10
 LEARNING_METRIC = "LAST_LOSS" #LAST_LOSS seems to work best
-TEST_EPOCHS = 15
+TEST_EPOCHS = 2
+LAST_TRAINING_EPOCHS = 30
 
 ACTIVATION_FUNCTIONS = {
     "sigmoid":tf.keras.activations.sigmoid,
