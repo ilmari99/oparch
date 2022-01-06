@@ -56,6 +56,7 @@ def y_function(x) -> np.ndarray:
     return y
 
 if __name__ == '__main__':
+    print(f"Using GPUS: {tf.config.list_physical_devices('GPU')}")
 
     #train_generator, validation_generator = own_funs.get_image_generators_from_path("C://Users//ivaht//Downloads//aalto_lut_train_validation//aalto_lut_training",
     #                                                       "C://Users//ivaht//Downloads//aalto_lut_train_validation//aalto_lut_validation")
@@ -75,23 +76,24 @@ if __name__ == '__main__':
     x_test_norm = x_test / x_max
     y_test_norm = y_test / y_max
     
-    cb1 = ccb.loss_callback()
     layers = [ 
-              tf.keras.layers.Dense(1,activation = "tanh"),
+              #tf.keras.layers.Dense(1,activation = "tanh"),
               tf.keras.layers.Dense(1),
               ]
     
     print(f"Config:{layers[0].get_config()}")
     
     optimized_model = mod_op.get_optimized_model(x_train_norm, y_train_norm, layers)
-    
     model = optimized_model.model
-    learning_speed = mot.test_learning_speed(tf.keras.models.clone_model(model),x_train_norm,y_train_norm)
-    OptimizedModel.build_and_compile(model,np.shape(x_train))
+    OptimizedModel.build_and_compile(model, np.shape(x_train_norm))
+    #tf.keras.models.clone_model(
+    learning_speed = mot.test_learning_speed(model,x_train_norm,y_train_norm)
+    model.reset_states()
+    cb1 = ccb.loss_callback(samples=y_train_norm.shape[0],epochs=constants.LAST_TRAINING_EPOCHS)
     model.summary()
     model.fit(
         x_train_norm, y_train_norm,
-        epochs=30,
+        epochs=constants.LAST_TRAINING_EPOCHS,
         verbose=2,
         batch_size=constants.BATCH_SIZE,
         validation_data=(x_test_norm, y_test_norm),
