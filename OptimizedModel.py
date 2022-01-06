@@ -13,7 +13,7 @@ class OptimizedModel:
     model = tf.keras.models.Sequential()
     layer_configs = []
     def __init__(self,layers,x_data):
-        tf.random.set_random_seed(42)
+        tf.random.set_seed(42)
         self.layers = layers
         self.model = tf.keras.models.Sequential(self.layers)
         self.input_shape = np.shape(x_data)
