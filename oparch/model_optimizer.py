@@ -1,10 +1,10 @@
 import numpy as np
 import tensorflow as tf
-import model_optimizer_tools as mot
-import LossCallback as lcb
-import configurations
+from . import model_optimizer_tools as mot
+from . import LossCallback as lcb
+from . import configurations
 import copy
-from OptimizedModel import OptimizedModel
+from .OptimizedModel import OptimizedModel
 
 def get_dense_layer(args: list):
     """args = list = [number of neurons(int), activation function]"""

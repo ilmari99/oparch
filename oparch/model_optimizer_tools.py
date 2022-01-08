@@ -1,8 +1,8 @@
-from tf_model_optimizer import Optimizedmodel
-import LossCallback as lcb
+from .OptimizedModel import OptimizedModel
+from . import LossCallback as lcb
 import tensorflow as tf
 import numpy as np
-import configurations
+from . import configurations
 import time
 from sklearn.model_selection import train_test_split
 
@@ -22,7 +22,7 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
         else returns configurations.LOSS_METRIC.
     """
     if not model.built:
-        OptimizedModel.OptimizedModel.build_and_compile(model,np.shape(x_train))
+        OptimizedModel.build_and_compile(model,np.shape(x_train))
     samples = len(y_train)#TODO change to numpy function
     verbose = 0
     x_train, x_test, y_train, y_test = train_test_split(x_train[0:samples], y_train[0:samples],test_size=0.1, random_state=42)

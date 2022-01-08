@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-import tf_model_optimizer.constants as constants
+from . import configurations
 import time
 
 class LossCallback(tf.keras.callbacks.Callback):
@@ -16,14 +16,14 @@ class LossCallback(tf.keras.callbacks.Callback):
     "VALIDATION_ACCURACY":None,
     }
     
-    def __init__(self, verbose = 0, samples=0, epochs=constants.TEST_EPOCHS):
+    def __init__(self, verbose = 0, samples=0, epochs=configurations.TEST_EPOCHS):
         super().__init__()
         self.verbose = verbose
         self.samples = samples
         self.current_epoch = 0
         self.epoch_start = 0
         if samples>0:
-            self.batch_count = int(np.ceil((samples/constants.BATCH_SIZE)))
+            self.batch_count = int(np.ceil((samples/configurations.BATCH_SIZE)))
             self.loss_array_epoch = np.zeros(epochs)
             self.loss_array_validation = np.zeros(epochs)
             self.accuracy_array_validation = np.zeros(epochs)
