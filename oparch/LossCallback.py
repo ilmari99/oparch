@@ -62,12 +62,14 @@ class LossCallback(tf.keras.callbacks.Callback):
     def on_epoch_end(self, epoch, logs=None):
         if self.samples == 0:
             self.loss_array_epoch.append(logs["loss"])
-            self.loss_array_validation.append(logs["val_loss"])
-            self.accuracy_array_validation.append(logs["val_accuracy"])
+            if "VALIDATION" in configurations.LEARNING_METRIC:
+                self.loss_array_validation.append(logs["val_loss"])
+                self.accuracy_array_validation.append(logs["val_accuracy"])
         else:
             self.loss_array_epoch[epoch] = logs["loss"]
-            self.loss_array_validation[epoch] = logs["val_loss"]
-            self.accuracy_array_validation[epoch] = logs["val_accuracy"]
+            if "VALIDATION" in configurations.LEARNING_METRIC:
+                self.loss_array_validation[epoch] = logs["val_loss"]
+                self.accuracy_array_validation[epoch] = logs["val_accuracy"]
         if self.verbose == 2:
             elaps_time = time.time() - self.epoch_start
             print(f"Elapsed time in epoch: {elaps_time}")
