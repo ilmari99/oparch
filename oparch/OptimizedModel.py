@@ -47,12 +47,10 @@ class OptimizedModel:
         #print(f"Optimizing learning rate...")
         def_lr = cls.learning_rate
         base_metric = mot.test_learning_speed(model,x,y)
-        model.reset_states()
         lrs = [1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
         for lr in lrs:
             cls.learning_rate = lr
             metric = mot.test_learning_speed(model,x,y)
-            model.reset_states()
             #print(f"Learning rate: {lr}, {configurations.LEARNING_METRIC}:{metric}")
             if(metric<base_metric):
                 def_lr = lr
@@ -67,13 +65,11 @@ class OptimizedModel:
         #print(f"Optimizing loss function...")
         def_loss = cls.loss_fun
         base_metric = mot.test_learning_speed(model,x,y)
-        model.reset_states()
         if(not all(isinstance(yi,int) for yi in y)): #TODO Tämän ehdon pitäisi tarkistaa, onko y categorinen vai ei
             loss_function_dict = configurations.REGRESSION_LOSS_FUNCTIONS
         for loss_fun in loss_function_dict.values():
             cls.loss_fun = loss_fun
             metric = mot.test_learning_speed(model,x,y)
-            model.reset_states()
             #print(f"Loss function: {type(cls.loss_fun).__name__}, {configurations.LEARNING_METRIC}:{metric}")
             if(metric<base_metric):
                 def_loss = loss_fun
@@ -87,12 +83,10 @@ class OptimizedModel:
         #print(f"Optimizing optimizer...")
         def_optimizer = cls.optimizer
         base_metric = mot.test_learning_speed(model,x,y)
-        model.reset_states()
         for opt in configurations.OPTIMIZERS.values():
             cls.optimizer = opt
             cls.set_learning_rate(cls.learning_rate)
             metric = mot.test_learning_speed(model,x,y)
-            model.reset_states()
             #print(f"Optimizer: {cls.optimizer.get_config()}, {configurations.LEARNING_METRIC}:{metric}")
             if(metric<base_metric):
                 def_optimizer = opt
