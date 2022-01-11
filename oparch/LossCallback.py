@@ -44,7 +44,6 @@ class LossCallback(tf.keras.callbacks.Callback):
         self.learning_metric["VALIDATION_LOSS"] = np.mean(self.loss_array_validation)
         self.learning_metric["LAST_VALIDATION_LOSS"] = self.loss_array_validation[-1]
         self.learning_metric["VALIDATION_ACCURACY"] = np.mean(self.accuracy_array_validation)
-        print(self.loss_array_batch)
         if(self.verbose > 0):
             print(f"ITEMS:{self.learning_metric.items()}")
             if(self.verbose == 2):
