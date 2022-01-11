@@ -13,7 +13,7 @@ setup(
     description="first package",
     long_description=readme,
     long_description_content_type="text/markdown",
-    url="https://github.com/ilmari99/tf_model_optimizer/",
+    url="https://github.com/ilmari99/oparch/",
     packages=find_packages(),
     install_requires=requirements,
     classifiers=[
