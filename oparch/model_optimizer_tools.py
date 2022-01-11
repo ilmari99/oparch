@@ -6,7 +6,6 @@ from . import configurations
 import time
 from sklearn.model_selection import train_test_split
 
-
 def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.2):
     """Tests the learning speed of the model.
        The learning speed is measured by the loss on the validation set
@@ -26,7 +25,7 @@ def test_learning_speed(model, x_train, y_train,samples=500, validation_split=0.
     samples = len(y_train)#TODO change to numpy function
     verbose = 0
     x_train, x_test, y_train, y_test = train_test_split(x_train[0:samples], y_train[0:samples],test_size=0.1, random_state=42)
-    cb_loss = ccb.loss_callback(samples=y_train.shape[0])
+    cb_loss = lcb.LossCallback(samples=y_train.shape[0])
     start = time.time()
     hist = model.fit(
         x_train, y_train,
