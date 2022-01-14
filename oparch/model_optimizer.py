@@ -26,9 +26,11 @@ def get_optimized_model(x_train: np.ndarray, y_train: np.ndarray, layer_list: li
     """
     optimized_model = OptimizedModel(layer_list,x_train)
     #TODO: how do these link to the last test run before returning
-    #OptimizedModel.optimize_loss_fun(optimized_model.model,x_train,y_train)
-    #OptimizedModel.optimize_optimizer(optimized_model.model,x_train,y_train)
-    #OptimizedModel.optimize_learning_rate(optimized_model.model,x_train,y_train)
+    OptimizedModel.optimize_loss_fun(optimized_model.model,x_train,y_train)
+    
+    OptimizedModel.optimize_optimizer(optimized_model.model,x_train,y_train)
+    
+    OptimizedModel.optimize_learning_rate(optimized_model.model,x_train,y_train)
     best_metric = mot.test_learning_speed(optimized_model.model,x_train,y_train)
     print(f"{configurations.LEARNING_METRIC} with default layers was {best_metric}")
     layer_configs = [layer.get_config() for layer in layer_list]
@@ -51,10 +53,11 @@ def get_optimized_model(x_train: np.ndarray, y_train: np.ndarray, layer_list: li
         optimized_model.set_layers_from_config(optimized_configs)
         #TODO Looks like there is a problem in these optimize functions
         #optimized_model.model.save_weights("saved_weights.h5")
-        #OptimizedModel.optimize_loss_fun(optimized_model.model,x_train,y_train)
-        #OptimizedModel.optimize_optimizer(optimized_model.model,x_train,y_train)
-        #OptimizedModel.optimize_learning_rate(optimized_model.model,x_train,y_train)
+        OptimizedModel.optimize_loss_fun(optimized_model.model,x_train,y_train)
+        OptimizedModel.optimize_optimizer(optimized_model.model,x_train,y_train)
+        OptimizedModel.optimize_learning_rate(optimized_model.model,x_train,y_train)
         #optimized_model.model.load_weights("saved_weights.h5")
+        
         metric = mot.test_learning_speed(optimized_model.model, x_train, y_train)
         print(f"{configurations.LEARNING_METRIC} after optimization: {metric}")
     return optimized_model
@@ -82,7 +85,7 @@ def get_optimized_dense(index, layers, x_train, y_train):
             layer = get_dense_layer(dense_args)
             layer_list[index] = layer
             model = tf.keras.models.Sequential(layer_list)
-            #TODO: This is not worth the time. Using these seems to get a worse answer, for some reason.
+            #TODO: This is not worth the time. Using these seems to get a worse answer anyway, for some reason.
             #OptimizedModel.optimize_loss_fun(model,x_train,y_train)
             #OptimizedModel.optimize_optimizer(model,x_train,y_train)
             #OptimizedModel.optimize_learning_rate(model,x_train,y_train)
