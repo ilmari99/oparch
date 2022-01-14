@@ -36,7 +36,8 @@ hist = model.fit(
 layers = [tf.keras.layers.Dense.from_config(config) for config in layers_configs]
 optimized_model = oparch.model_optimizer.get_optimized_model(x_train, y_train, layers)
 
-optimized_model.build_and_compile(optimized_model.model, np.shape(x_train))
+#optimized_model.build_and_compile(optimized_model.model, np.shape(x_train))
+optimized_model.print_optimized_model()
 optimized_model.model.fit(
         x_train, y_train,
         epochs=oparch.configurations.TEST_EPOCHS,

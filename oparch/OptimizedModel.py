@@ -16,7 +16,9 @@ class OptimizedModel:
         tf.random.set_seed(42)
         self.layers = layers
         self.model = tf.keras.models.Sequential(self.layers)
-        self.input_shape = np.shape(x_data)
+        self.input_shape = np.shape(x_data[0])
+        if np.ndim(self.input_shape) == 1:
+            self.input_shape = (1,self.input_shape[0])
         self.layer_configs = [layer.get_config() for layer in layers]
         
     def get_model(self):
@@ -32,6 +34,19 @@ class OptimizedModel:
         self.model = tf.keras.models.Sequential(self.layers)
         self.build_and_compile(self.model,self.input_shape)
         
+    
+    def print_optimized_model(self):
+        print("Optimized model summary:")
+        print(f"Input shape: {self.input_shape}")
+        layer_configs = [layer.get_config() for layer in self.layers]
+        layers_summary = [(config["units"], config["activation"]) for config in layer_configs]
+        for summary in layers_summary:
+            print(f"Units: {summary[0]} Activation: {summary[1]}")
+        print(f"Optimizer: {type(self.optimizer).__name__}")
+        print(f"Optimizer weights: {self.optimizer.get_weights()}")
+        print(f"Loss function: {type(self.loss_fun)}")
+        print(f"Learning rate: {self.learning_rate}")
+        print(f"Model weights: {self.model.weights}")
         
     def get_layers(self):
         """returns a shallow copy of the models layers
@@ -92,7 +107,7 @@ class OptimizedModel:
                 def_optimizer = opt
                 base_metric = metric
         cls.optimizer = def_optimizer
-        #print(f"Optimized optimizer: {cls.optimizer.get_config()}, {configurations.LEARNING_METRIC}:{base_metric}")
+        print(f"Optimized optimizer: {cls.optimizer.get_config()}, {configurations.LEARNING_METRIC}:{base_metric}")
         return def_optimizer
     
     @classmethod
@@ -114,8 +129,10 @@ class OptimizedModel:
         Returns: model (tf.keras.Model.Sequential): returns the built model
         """
         model.build(input_shape)
+        new_optimizer = type(cls.optimizer)
+        new_optimizer = new_optimizer(cls.learning_rate)
         model.compile(loss=cls.loss_fun,
-                    optimizer=cls.optimizer,
+                    optimizer=new_optimizer,
                     metrics=["accuracy"])
         return model
     
