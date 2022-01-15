@@ -1,4 +1,4 @@
-from . import model_optimizer
+from . import optimize
 from . import OptimizedModel
 from . import model_optimizer_tools
 from . import LossCallback
