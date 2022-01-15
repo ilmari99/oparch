@@ -62,6 +62,100 @@ def get_optimized_model(x_train: np.ndarray, y_train: np.ndarray, layer_list: li
         print(f"{configurations.LEARNING_METRIC} after optimization: {metric}")
     return optimized_model
 
+def check_compilation(model: tf.keras.models.Sequential, X, kwarg_dict):
+    if not hasattr(model, "optimizer"): #if model is not compiled, compile it with optimizer and loss kwargs
+        try:
+            model.build(np.shape(X))
+            model.compile(optimizer=kwarg_dict["optimizer"], loss=kwarg_dict["loss"])
+        except KeyError:
+            raise KeyError("If the model is not compiled, you must specify the optimizer and loss")
+    #If the optimizer has weights, it has been used before and the measurements would not be accurate
+    if model.optimizer.get_weights(): #If optimizer weights list is not empty
+        raise Exception("The model has been trained before optimizing and cannot be accurately tested")
+    return model
+
+def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> dict:
+    model = check_compilation(model, X, kwargs)
+    if not isinstance(model.layers[index],tf.keras.layers.Dense):
+        return None
+    layers = model.layers
+    index_layer_configuration = layers[index].get_config()
+    best_configuration = None
+    best_metric = float("inf")
+    optimizer_config = model.optimizer.get_config()
+    for activation in configurations.ACTIVATION_FUNCTIONS.keys():
+        index_layer_configuration["activation"] = activation # activation is the string identifier of the activation function
+        layers[index] = tf.keras.layers.Dense.from_config(index_layer_configuration)
+        #Create and compile a model with the new activation function
+        #The layers weights will still be the same as the models layers, so should be random
+        test_model = tf.keras.models.Sequential(layers)
+        test_model.build(np.shape(X))
+        test_model.compile(optimizer=type(model.optimizer)(optimizer_config["learning_rate"]),
+                  loss=model.loss)
+        
+        metric = mot.test_learning_speed(test_model, X, y)
+        if metric < best_metric:
+            best_metric = metric
+            best_configuration = index_layer_configuration #TODO: check that this variable doesn't change when index layer conf changes
+    return (best_configuration, best_metric)
+        
+        
+
+def opt_dense(model: tf.keras.models.Sequential, index, X, y, **kwargs):
+    model = check_compilation(model, X, kwargs)
+    
+    #Now we have a model that is not trained
+    
+    verbose = 0
+    #This should be the fast method, but TODO: make the layers have the previous layer as input.
+    #layers = model.layers
+    #Creating the layers from configs each time works, but it should be much slower.
+    layer_configs = [layer.get_config() for layer in model.layers] 
+    layers = [layer.__class__.from_config(config) for layer,config in zip(model.layers, layer_configs)]
+    
+    if not isinstance(model.layers[index],tf.keras.layers.Dense):
+        return None
+    
+    nodes = [2**i for i in range(0,6)] #Node amounts to test
+    
+    #configs = [layer.get_config() for layer in layers]
+    #print(f"Current layer at index {index}: units{configs[index]['units']} Activation:{configs[index]['activation']}")
+    optimizer_config = model.optimizer.get_config()
+
+    #Test with no layer at index
+    best_dense = None
+    curr_layer = layers.pop(index) 
+    test_model = tf.keras.models.Sequential(layers)
+    test_model.build(np.shape(X))
+    test_model.compile(
+        optimizer=type(model.optimizer)(optimizer_config["learning_rate"]),
+        loss=model.loss
+    )
+    best_metric = mot.test_learning_speed(test_model,X,y)
+    #layers.insert(index,curr_layer)
+    #print(f"{configurations.LEARNING_METRIC} with no layer at index {index}: {best_metric}")
+
+    best_metric = float("inf")###########Only until empty layer test works
+    best_configuration = None
+    index_layer_configuration = layer_configs[index]
+    for node_amount in nodes:
+        index_layer_configuration["units"] = node_amount
+        layer_configs[index] = index_layer_configuration
+        layers = [layer.__class__.from_config(config) for layer,config in zip(model.layers, layer_configs)]
+        #layers[index] = tf.keras.layers.Dense.from_config(index_layer_configuration)
+        test_model = tf.keras.models.Sequential(layers)
+        test_model.build(np.shape(X))
+        test_model.compile(
+            optimizer=type(model.optimizer)(optimizer_config["learning_rate"]),
+            loss=model.loss
+        )
+        (configuration, metric) = opt_activation(test_model, index, X, y)
+        if metric<best_metric:
+            best_metric = metric
+            best_configuration = configuration
+    return (best_configuration, best_metric)
+    
+
 def get_optimized_dense(index, layers, x_train, y_train):
     print(f"Testing for a new dense layer at index {index}...")
     nodes = [2**i for i in range(0,6)] #Node amounts to test
