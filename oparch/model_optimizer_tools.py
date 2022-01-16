@@ -21,10 +21,13 @@ def test_learning_speed(model: tf.keras.Model, X: np.ndarray,
         float: if epochs == 1 returns the loss on validation set.
         else returns configurations.LOSS_METRIC.
     """
-    samples = kwargs.get("samples",500)
+    allowed_kwargs = {"samples", "validation_split","return_metric"}
+    samples = kwargs.get("samples",configurations.TEST_SAMPLES)
     validation_split = kwargs.get("validation_split",0.2)
     return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
-        
+    
+    
+    
     try:
         model.optimizer.get_weights()
     except AttributeError:
@@ -32,8 +35,9 @@ def test_learning_speed(model: tf.keras.Model, X: np.ndarray,
     #rebuild and compile the model to get a clean optimizer
     if model.optimizer.get_weights(): #If list is not empty
         model.build(np.shape(X))
-        model.compile(optimizer=type(model.optimizer)(model.optimizer.get_config()["learning_rate"]),
-                  loss=model.loss)
+        model.compile(optimizer=model.optimizer.__class__.from_config((model.optimizer.get_config()),
+                  loss=model.loss))
+        print("rebuild and compile the model to get a clean optimizer")
     #Save the models weights to return the model to its original state after testing the learning speed
     model.save_weights("test_weights.h5")
     samples = np.shape(y)[0] #TODO: this uses all available data instead of samples
@@ -59,7 +63,7 @@ def test_learning_speed(model: tf.keras.Model, X: np.ndarray,
     #Rebuild and recompile to give the model a clean optimizer
     model.load_weights("test_weights.h5")
     model.build(np.shape(X))
-    model.compile(optimizer=type(model.optimizer)(model.optimizer.get_config()["learning_rate"]),
+    model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
                   loss=model.loss)
     #if only one epoch is done, returns the last loss
     if(configurations.TEST_EPOCHS==1):
