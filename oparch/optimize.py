@@ -13,24 +13,44 @@ def check_compilation(model: tf.keras.models.Sequential, X, kwarg_dict, **kwargs
             model.compile(optimizer=kwarg_dict["optimizer"], loss=kwarg_dict["loss"])
         except KeyError:
             raise KeyError("If the model is not compiled, you must specify the optimizer and loss")
-    #If the optimizer has weights, it has been used before and the measurements would not be accurate
-    if model.optimizer.get_weights(): #If optimizer weights list is not empty
+    if model.optimizer.get_weights() or model.weights: #If optimizer weights list is not empty
         layers = get_copy_of_layers(model.layers)
-        lr = model.optimizer.get_config()["learning_rate"]
-        optimizer = kwarg_dict.get("optimizer",type(model.optimizer)(lr))
+        optimizer_config = model.optimizer.get_config()
+        lr = optimizer_config["learning_rate"]
+        decay = optimizer_config["decay"]
+        optimizer = type(model.optimizer)(lr,decay=decay)
+        optimizer = kwarg_dict.get("optimizer",optimizer)
         loss = kwarg_dict.get("loss",model.loss)
         model = tf.keras.models.Sequential(layers)
         model.build(np.shape(X))
         model.compile(optimizer=optimizer, loss=loss)
-        print("It is recommended to use a fresh model, that has not been trained, to ensure correct results and faster execution")
+        #print("It is recommended to use a fresh model, that has not been trained, to ensure correct results and faster execution")
     return model
 
 def get_layers_config(layers: list)->list:
     configs = [layer.get_config() for layer in layers]
     return configs
+
+def print_optimized_model(model):
+    print("Optimized model summary:")
+    layer_configs = [layer.get_config() for layer in model.layers]
+    print(layer_configs[0])
+    layers_summary = [(config.get("name"),config.get("units"), config.get("activation")) for config in layer_configs]
+    optimizer_config = model.optimizer.get_config()
+    for summary in layers_summary:
+        print(f"Name: {summary[0]}\tUnits: {summary[1]}\tActivation: {summary[2]}")
+    print(f"Optimizer: {optimizer_config}")
+    print(f"Loss function: {type(model.loss).__name__}")
+
     
 def get_copy_of_layers(layers:list) -> list:
     configs = get_layers_config(layers)
+    names = list(range(len(configs)))
+    for config in configs:
+        name = config["name"]
+        if name in names:
+            config["name"] = "c"+config["name"]
+        names.append(name)
     new_layers = [layer.__class__.from_config(config) for layer,config in zip(layers, configs)]
     return new_layers
 
@@ -70,13 +90,14 @@ def opt_learning_rate(model: tf.keras.models.Sequential, X, y,**kwargs) -> (floa
 
 def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
     model = check_compilation(model, X, kwargs)
-    metric_type = "RELATIVE_IMPROVEMENT_EPOCH"
+    metric_type = "RELATIVE_IMPROVEMENT_EPOCH" #Use this, because losses are not necessarily comparable
     best_loss_fun = model.loss
     best_metric = mot.test_learning_speed(model,X,y,return_metric=metric_type)
+    optimizer_config = model.optimizer.get_config()
     if(not all(isinstance(yi,int) for yi in y)): #TODO Tämän ehdon pitäisi tarkistaa, onko y categorinen vai ei
         loss_function_dict = configurations.REGRESSION_LOSS_FUNCTIONS
     for loss_fun in loss_function_dict.values():
-        model.compile(optimizer=model.optimizer, loss=loss_fun)
+        model.compile(optimizer=model.optimizer.__class__.from_config(optimizer_config), loss=loss_fun)
         metric = mot.test_learning_speed(model, X, y, return_metric=metric_type)
         print(f"Loss function: {type(loss_fun).__name__}, {metric_type}:{metric}")
         if(metric<best_metric):
@@ -104,6 +125,8 @@ def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> 
         test_model.build(np.shape(X))
         test_model.compile(optimizer=model.optimizer.__class__.from_config(optimizer_config),
                   loss=model.loss)
+        #test_model.compile(optimizer=model.optimizer,
+        #          loss=model.loss)
         
         metric = mot.test_learning_speed(test_model, X, y)
         print(activation,metric)
@@ -111,34 +134,23 @@ def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> 
             best_metric = metric
             best_configuration = index_layer_configuration
     return (best_configuration, best_metric)
-        
 
-
-def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
-    model = check_compilation(model, X, kwargs)    
-    #This should be the fast method, but TODO: make the layers have the previous layer as input.
-    #layers = model.layers
-    
-    #Creating the layers from configs each time works, but it should be much slower.
-    layer_configs = [layer.get_config() for layer in model.layers] 
+def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, return_model=False, **kwargs):
+    model = check_compilation(model, X, kwargs)
+    layer_configs = [layer.get_config() for layer in model.layers]
     layers = [layer.__class__.from_config(config) for layer,config in zip(model.layers, layer_configs)]
-    
+    optimizer_type = model.optimizer.__class__
     if not isinstance(model.layers[index],tf.keras.layers.Dense):
         return None
-    
     nodes = [2**i for i in range(0,6)] #Node amounts to test
-    
-    #configs = [layer.get_config() for layer in layers]
-    #print(f"Current layer at index {index}: units{configs[index]['units']} Activation:{configs[index]['activation']}")
     optimizer_config = model.optimizer.get_config()
-
     #Test with no layer at index
     best_dense = None
     curr_layer = layers.pop(index) 
     test_model = tf.keras.models.Sequential(layers)
     test_model.build(np.shape(X))
     test_model.compile(
-        optimizer=model.optimizer.__class__.from_config(optimizer_config),
+        optimizer=optimizer_type.from_config(optimizer_config),
         loss=model.loss
     )
     best_metric = mot.test_learning_speed(test_model,X,y)
@@ -149,11 +161,10 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
         index_layer_configuration["units"] = node_amount
         layer_configs[index] = index_layer_configuration
         layers = [layer.__class__.from_config(config) for layer,config in zip(model.layers, layer_configs)]
-        #layers[index] = tf.keras.layers.Dense.from_config(index_layer_configuration)
         test_model = tf.keras.models.Sequential(layers)
         test_model.build(np.shape(X))
         test_model.compile(
-            optimizer=model.optimizer.__class__.from_config(optimizer_config),
+            optimizer=optimizer_type.from_config(optimizer_config),
             loss=model.loss
         )
         metric = mot.test_learning_speed(test_model, X, y)
@@ -161,6 +172,20 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
         if metric<best_metric:
             best_metric = metric
             best_configuration = layers[index].get_config()
+    if return_model:
+        loss_type = model.loss.__class__
+        if best_configuration == None:
+            layer_configs.pop(index)
+            model.layers.pop(index)
+        else:
+            layer_configs[index] = best_configuration
+        layers = [layer.__class__.from_config(config) for layer,config in zip(model.layers, layer_configs)]
+        new_layers = get_copy_of_layers(layers)
+        model = tf.keras.models.Sequential(layers)
+        model.build(np.shape(X))
+        model.compile(optimizer=optimizer_type.from_config(optimizer_config),
+            loss=loss_type())
+        return (model, best_metric)
     return (best_configuration, best_metric)
 
 def opt_decay(model: tf.keras.models.Sequential,X,y,**kwargs):
