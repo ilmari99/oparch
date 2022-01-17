@@ -7,8 +7,8 @@ requirements = ["keras~=2.7", "matplotlib~=3.5", "numpy>=1.2", "tensorflow>=2.5"
 
 setup(
     name="oparch",
-    version="0.0.4",
-    author="Ilmari Vahterisyo",
+    version="0.0.5",
+    author="Ilmari Vahteristo",
     author_email="i.vahteristo@gmail.com",
     description="first package",
     long_description=readme,
