@@ -5,6 +5,15 @@ LEARNING_METRIC = "LAST_LOSS" #LAST_LOSS or RELATIVE_IMPROVEMENT_EPOCH seems to 
 TEST_EPOCHS = 5
 TEST_SAMPLES = 100
 
+def configure(**kwargs):
+    allowed_kwargs = {"IMAGE_SIZE", "BATCH_SIZE", "LEARNING_METRIC", "TEST_EPOCHS", "TEST_SAMPLES"}
+    IMAGE_SIZE = kwargs.get("IMAGE_SIZE",IMAGE_SIZE)
+    BATCH_SIZE = kwargs.get("BATCH_SIZE",BATCH_SIZE)
+    LEARNING_METRIC = kwargs.get("LEARNING_METRIC",LEARNING_METRIC)
+    TEST_EPOCHS = kwargs.get("TEST_EPOCHS",TEST_EPOCHS)
+    TEST_SAMPLES = kwargs.get("TEST_SAMPLES", TEST_SAMPLES)
+    
+
 ACTIVATION_FUNCTIONS = {
     "sigmoid":tf.keras.activations.sigmoid,
     "linear":None,
