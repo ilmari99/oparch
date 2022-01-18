@@ -2,6 +2,7 @@ from .OptimizedModel import OptimizedModel
 from . import LossCallback as lcb
 import tensorflow as tf
 import numpy as np
+import random
 from . import configurations
 import time
 from sklearn.model_selection import train_test_split
@@ -22,13 +23,13 @@ def test_learning_speed(model: tf.keras.Model, X: np.ndarray,
         else returns configurations.LOSS_METRIC.
     """
     allowed_kwargs = {"samples", "validation_split","return_metric","epochs","batch_size"}
-    samples = kwargs.get("samples",configurations.TEST_SAMPLES)
+    samples = kwargs.get("samples",configurations.TEST_SAMPLES)#TODO: If samples are configured during run time, the changes are not reflected
     validation_split = kwargs.get("validation_split",0.2)
     return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
     epochs = kwargs.get("epochs",configurations.TEST_EPOCHS)
     batch_size = kwargs.get("batch_size",configurations.BATCH_SIZE)
-    
-    
+    if samples > np.size(X,axis=0):
+        samples = np.size(X,axis=0)
     
     try:
         model.optimizer.get_weights()
@@ -37,26 +38,28 @@ def test_learning_speed(model: tf.keras.Model, X: np.ndarray,
     #rebuild and compile the model to get a clean optimizer
     if model.optimizer.get_weights(): #If list is not empty
         model.build(np.shape(X))
-        #model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
-        model.compile(optimizer=model.optimizer,
+        model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
                   loss=model.loss)
         print("rebuild and compile the model to get a clean optimizer")
     #Save the models weights to return the model to its original state after testing the learning speed
     model.save_weights("test_weights.h5")
-    samples = np.shape(y)[0] #TODO: this uses all available data instead of samples
+    #samples = np.shape(y)[0] #TODO: this uses all available data instead of samples
     verbose = 0
     validation_data = None
+    sample_indexes = random.sample(range(np.size(X,axis=0)),samples)
+    X = X[sample_indexes]
+    y = y[sample_indexes]
     if("VALIDATION" in configurations.LEARNING_METRIC): #If the learning metric should be calculated from validation set
-        X, x_test, y, y_test = train_test_split(X[0:samples], y[0:samples],test_size=0.2, random_state=42)
+        X, x_test, y, y_test = train_test_split(X, y,test_size=0.2, random_state=42)
         validation_data = (x_test,y_test)
-    cb_loss = lcb.LossCallback(samples=y.shape[0])
+    cb_loss = lcb.LossCallback(samples=samples)
     start = time.time()
     hist = model.fit(
         X, y,
-        epochs=configurations.TEST_EPOCHS,
+        epochs=epochs,
         verbose=verbose,
         validation_data=validation_data,
-        batch_size=configurations.BATCH_SIZE,
+        batch_size=batch_size,
         callbacks=[cb_loss],
         shuffle=True,
         use_multiprocessing=True,
@@ -66,11 +69,10 @@ def test_learning_speed(model: tf.keras.Model, X: np.ndarray,
     #Rebuild and recompile to give the model a clean optimizer
     model.load_weights("test_weights.h5")
     model.build(np.shape(X))
-    #model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
-    model.compile(optimizer=model.optimizer,
+    model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
                   loss=model.loss)
     #if only one epoch is done, returns the last loss
     if(configurations.TEST_EPOCHS==1):
         return cb_loss.learning_metric["LAST_LOSS"]
-    return cb_loss.learning_metric[configurations.LEARNING_METRIC]
+    return cb_loss.learning_metric[return_metric]
 
