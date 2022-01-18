@@ -3,10 +3,12 @@ IMAGE_SIZE = (180,180)
 BATCH_SIZE = 32
 LEARNING_METRIC = "LAST_LOSS" #LAST_LOSS or RELATIVE_IMPROVEMENT_EPOCH seems to work best
 TEST_EPOCHS = 5
-TEST_SAMPLES = 100
+TEST_SAMPLES = 5000
 
+#TODO: This probably has many places where a parameter changed at runtime doesn't reflect
 def configure(**kwargs):
     allowed_kwargs = {"IMAGE_SIZE", "BATCH_SIZE", "LEARNING_METRIC", "TEST_EPOCHS", "TEST_SAMPLES"}
+    global IMAGE_SIZE,BATCH_SIZE,LEARNING_METRIC,TEST_EPOCHS,TEST_SAMPLES
     IMAGE_SIZE = kwargs.get("IMAGE_SIZE",IMAGE_SIZE)
     BATCH_SIZE = kwargs.get("BATCH_SIZE",BATCH_SIZE)
     LEARNING_METRIC = kwargs.get("LEARNING_METRIC",LEARNING_METRIC)
