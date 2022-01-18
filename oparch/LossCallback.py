@@ -16,8 +16,11 @@ class LossCallback(tf.keras.callbacks.Callback):
     "VALIDATION_ACCURACY":None,
     }
     
-    def __init__(self, verbose = 0, samples=0, epochs=configurations.TEST_EPOCHS):
+    def __init__(self, **kwargs):
         super().__init__()
+        epochs = kwargs.get("epochs",configurations.TEST_EPOCHS)
+        verbose = kwargs.get("verbose",0)
+        samples = kwargs.get("samples",0)
         self.verbose = verbose
         self.samples = samples
         self.current_epoch = 0
@@ -27,7 +30,7 @@ class LossCallback(tf.keras.callbacks.Callback):
             self.loss_array_epoch = np.zeros(epochs)
             self.loss_array_validation = np.zeros(epochs)
             self.accuracy_array_validation = np.zeros(epochs)
-            self.loss_array_batch = np.zeros(self.batch_count * epochs)
+            self.loss_array_batch = np.zeros(self.batch_count * configurations.TEST_EPOCHS)
         else:
             print("It is recommended to specify sample size when creating the LossCallback")
             self.loss_array_epoch = []
@@ -79,4 +82,4 @@ class LossCallback(tf.keras.callbacks.Callback):
         plt.plot(range(len(self.loss_array_batch)), self.loss_array_batch)
         plt.xlabel("Batches")
         plt.ylabel("Loss on batch")
-        plt.show()
+        #plt.show()
