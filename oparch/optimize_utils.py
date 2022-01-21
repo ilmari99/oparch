@@ -104,16 +104,19 @@ def get_layers_config(layers: list)->list:
     configs = [layer.get_config() for layer in layers]
     return configs
 
-def create_dict(model):
+def create_dict(model,learning_metrics={}):
     dic = {
         "optimizer":None,
         "loss_function":None,
         "layers":{},
-        "learning_metrics":None,
+        "learning_metrics":learning_metrics,
     }
-    dic["optimizer"] = model.optimizer.get_config()
-    dic["loss_function"] = type(model.loss).__name__
-    layer_configs = [layer.get_config() for layer in model.layers]
+    try:
+        dic["optimizer"] = model.optimizer.get_config()
+        dic["loss_function"] = model.loss.__class__.__name__
+        layer_configs = [layer.get_config() for layer in model.layers]
+    except AttributeError:
+        raise AttributeError("Model must be compiled before creating a dictionary.")
     layers_summary = [(config.get("name"),config.get("units"), config.get("activation")) for config in layer_configs]
     for summary in layers_summary:
         dic["layers"][summary[0]] = {}
@@ -121,11 +124,26 @@ def create_dict(model):
         dic["layers"][summary[0]]["activation"] = summary[2]
     return dic
 
-def print_model(*args):
-    if isinstance(args[0],tf.keras.models.Sequential):
-        dic = create_dict(args[0])
-    elif isinstance(args[0], dict):
-        pass
+def string_format_model_dic(dic):
+    if isinstance(dic,tf.keras.models.Sequential):
+        dic = create_dict(dic)
+    if not isinstance(dic, dict):
+        raise TypeError(f"Excpected argument of type Sequential or dict, but received {type(dic)}")
+    string = f"\nOptimizer: {dic.get('optimizer')}\n"
+    string = string + f"Loss function: {type(dic.get('loss_function')).__name__}\n"
+    string = string + f"{dic.get('learning_metrics')}\n"
+    string = string + f"{'LAYER':<12}{'ACTIVATION':<12}{'UNITS'}\n"
+    for layer in dic["layers"]:
+        string = string + f"{layer:<12}{dic['layers'][layer]['activation']:<12}{dic['layers'][layer]['units']}\n"
+    return string
+
+def print_model(dic, learning_metrics={}):
+    if isinstance(dic,tf.keras.models.Sequential):
+        dic = create_dict(dic,learning_metrics=learning_metrics)
+    if not isinstance(dic, dict):
+        raise TypeError(f"Excpected argument of type Sequential or dict, but received {type(dic)}")
+    string = string_format_model_dic(dic)
+    print(string)
         
         
 
