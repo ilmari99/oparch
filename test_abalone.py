@@ -21,17 +21,18 @@ layers = [tf.keras.layers.Dense(64),tf.keras.layers.Dense(1)] #A typical structu
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
-opt.utils.print_model(model)
+cb_loss = opt.LossCallback.LossCallback()
 hist = model.fit(
         X, y,
         epochs=10,
         verbose=1,
         validation_data=(X_test,y_test),
         batch_size=configurations.BATCH_SIZE,
-        #callbacks=[cb_loss],
+        callbacks=[cb_loss],
         shuffle=True,
         use_multiprocessing=True,
 )
+opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
 y_pred = model.predict(X_test)
 plt.plot(range(len(y_pred)),y_pred)
 plt.plot(range(len(y_test)),y_test)
