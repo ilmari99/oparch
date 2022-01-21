@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
-from oparch import optimize as opt
+import oparch as opt
 from sklearn.model_selection import train_test_split
 from oparch import configurations
 from oparch import LossCallback
@@ -21,6 +21,7 @@ layers = [tf.keras.layers.Dense(64),tf.keras.layers.Dense(1)] #A typical structu
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
+opt.utils.print_model(model)
 hist = model.fit(
         X, y,
         epochs=10,
@@ -40,13 +41,11 @@ model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
 #(model, loss_lossfun) = opt.opt_loss_fun(model, X, y)
-(model, loss_lr) = opt.opt_learning_rate(model, X, y)
+(model,l) = opt.opt_learning_rate(model, X, y)
 (model, loss_decay) = opt.opt_decay(model, X, y)
 (model, loss_act) = opt.opt_activation(model, len(model.layers)-1, X, y)
-model.load_weights("ONLY_TEST.h5")
 index = 0
 (model, loss_act) = opt.opt_activation(model, index, X, y)
-model.load_weights("ONLY_TEST.h5")
 (model, loss_units) = opt.opt_dense_units(model, index, X, y)
 if model == None:
     index = index - 1
@@ -71,7 +70,7 @@ hist = model.fit(
         shuffle=True,
         use_multiprocessing=True,
 )
-opt.print_optimized_model(model)
+opt.utils.print_model(model)
 y_pred = model.predict(X_test)
 plt.plot(range(len(y_pred)),y_pred)
 plt.plot(range(len(y_test)),y_test)
