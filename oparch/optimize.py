@@ -6,6 +6,7 @@ from . import configurations
 import copy
 _default_learning_rates = [1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
 _default_nodes = [2**i for i in range(0,8)] #Node amounts to test
+_default_decays = [0.95, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001, 0]
 
 
 def opt_learning_rate(model: tf.keras.models.Sequential, X, y,**kwargs) -> (float, float):
@@ -155,11 +156,10 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
 
 def opt_decay(model: tf.keras.models.Sequential,X,y,**kwargs):
     model = utils.check_compilation(model, X, kwargs)
-    default_decays = [0.95, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001, 0]
-    decays = kwargs.get("decays",default_decays)
+    decays = kwargs.get("decays",_default_decays)
     if not (isinstance(decays, list) or isinstance(decays, np.ndarray) or 1 in decays):
         print("Invalid decay in opt_decay: {decays}. Expected list or numpy array.\n"+
-              "Continuing execution with default decays {default_decays}")
+              "Continuing execution with default decays {_default_decays}")
         decays = default_decays
     optimizer_type = model.optimizer.__class__
     optimizer_config = model.optimizer.get_config()
