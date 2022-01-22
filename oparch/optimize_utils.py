@@ -82,13 +82,14 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     return cb_loss.learning_metric[return_metric]
 
 def check_compilation(model: tf.keras.models.Sequential, X, kwarg_dict, **kwargs) -> tf.keras.models.Sequential:
-    if not hasattr(model, "optimizer"): #if model is not compiled, compile it with optimizer and loss kwargs
+    if model.optimizer is None: #if model is not compiled, compile it with optimizer and loss kwargs
         try:
             model.build(np.shape(X))
             model.compile(optimizer=kwarg_dict["optimizer"], loss=kwarg_dict["loss"])
+            print("Model compiled with given optimizer and loss")
         except KeyError:
             raise KeyError("If the model is not compiled, you must specify the optimizer and loss")
-    if model.optimizer.get_weights() or model.weights: #If optimizer weights or model weights list is not empty
+    if model.optimizer.get_weights() or model.weights: #TODO: Model weights are not empty if the model is compiled, which it always is here
         layers = get_copy_of_layers(model.layers)
         optimizer_config = model.optimizer.get_config()
         optimizer = model.optimizer.__class__.from_config(optimizer_config)
