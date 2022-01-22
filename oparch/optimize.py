@@ -6,9 +6,10 @@ from . import configurations
 import copy
 _default_learning_rates = [1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
 _default_nodes = [2**i for i in range(0,8)] #Node amounts to test
+_default_decays = [0.95, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001, 0]
 
 
-def opt_learning_rate(model: tf.keras.models.Sequential, X, y,return_model = True,**kwargs) -> (float, float):
+def opt_learning_rate(model: tf.keras.models.Sequential, X, y,**kwargs) -> (float, float):
     model = utils.check_compilation(model, X, kwargs)
     learning_rates = kwargs.get("learning_rates",_default_learning_rates)
     if not (isinstance(learning_rates, list) or isinstance(learning_rates, np.ndarray)):
@@ -17,9 +18,9 @@ def opt_learning_rate(model: tf.keras.models.Sequential, X, y,return_model = Tru
         learning_rates = _default_learning_rates
     optimizer_type = model.optimizer.__class__
     optimizer_config = model.optimizer.get_config()
-    best_lr = optimizer_config["learning_rate"]
+    best_lr = optimizer_config["learning_rate"] #prints correctly for example 0.01
     best_metric = utils.test_learning_speed(model,X,y)
-    #print(f"Default learning rate: {best_lr}, {configurations.LEARNING_METRIC}:{best_metric}")
+    print(f"Learning rate: {best_lr}, {configurations.LEARNING_METRIC}:{best_metric}") #TODO: prints: 0.010000000149011612
     for lr in learning_rates:
         model.build(np.shape(X))
         optimizer_config["learning_rate"] = lr
@@ -29,13 +30,14 @@ def opt_learning_rate(model: tf.keras.models.Sequential, X, y,return_model = Tru
         if(metric<best_metric):
             best_metric = metric
             best_lr = lr
+    return_model = kwargs.get("return_model",True)
     if not return_model:
         return (best_lr, best_metric)
     optimizer_config["learning_rate"] = best_lr
     model.compile(optimizer=optimizer_type.from_config(optimizer_config),loss=model.loss)
     return (model, best_metric)
 
-def opt_loss_fun(model: tf.keras.models.Sequential,X,y, return_model=True,**kwargs):
+def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
     #TODO: when this changes the loss function to logarithmic loss, sometimes the results are very weird
     model = utils.check_compilation(model, X, kwargs)
     metric_type = "RELATIVE_IMPROVEMENT_EPOCH" #Use this, because losses are not necessarily comparable
@@ -43,6 +45,7 @@ def opt_loss_fun(model: tf.keras.models.Sequential,X,y, return_model=True,**kwar
     best_metric = utils.test_learning_speed(model,X,y,return_metric=metric_type)
     optimizer_config = model.optimizer.get_config()
     optimizer_type = model.optimizer.__class__
+    print(type(best_loss_fun).__name__, {metric_type},{best_metric})
     if(not all(isinstance(yi,int) for yi in y)): #TODO Tämän ehdon pitäisi tarkistaa, onko y categorinen vai ei
         loss_function_dict = configurations.REGRESSION_LOSS_FUNCTIONS
     for loss_fun in loss_function_dict.values():
@@ -52,12 +55,13 @@ def opt_loss_fun(model: tf.keras.models.Sequential,X,y, return_model=True,**kwar
         if(metric<best_metric):
             best_loss_fun = loss_fun
             best_metric = metric
+    return_model = kwargs.get("return_model",True)
     if not return_model:
         return (best_loss_fun,best_metric)
     model.compile(optimizer=optimizer_type.from_config(optimizer_config),loss=best_loss_fun)
     return (model, best_metric)
 
-def opt_activation(model: tf.keras.models.Sequential, index, X, y, return_model = True, **kwargs) -> dict:
+def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> dict:
     print(f"Optimizing activation function at index {index}")
     model = utils.check_compilation(model, X, kwargs)
     if not isinstance(model.layers[index],tf.keras.layers.Dense):
@@ -65,8 +69,10 @@ def opt_activation(model: tf.keras.models.Sequential, index, X, y, return_model 
     layers = model.layers
     index_layer_configuration = layers[index].get_config()
     best_configuration = layers[index].get_config()
-    best_metric = float("inf")
+    best_metric = utils.test_learning_speed(model, X, y)
     optimizer_config = model.optimizer.get_config()
+    activation = index_layer_configuration.get("activation")
+    print(activation,best_metric)
     for activation in configurations.ACTIVATION_FUNCTIONS.keys():
         index_layer_configuration["activation"] = activation # activation is the string identifier of the activation function
         layers[index] = tf.keras.layers.Dense.from_config(index_layer_configuration)
@@ -82,6 +88,7 @@ def opt_activation(model: tf.keras.models.Sequential, index, X, y, return_model 
         if metric < best_metric:
             best_metric = metric
             best_configuration = index_layer_configuration
+    return_model = kwargs.get("return_model",True)
     if not return_model:
         return (best_configuration, best_metric)
     layers[index] = tf.keras.layers.Dense.from_config(best_configuration)
@@ -91,7 +98,7 @@ def opt_activation(model: tf.keras.models.Sequential, index, X, y, return_model 
                   loss=model.loss)
     return (test_model,best_metric)
 
-def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, return_model=True, **kwargs):
+def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
     if not isinstance(model.layers[index],tf.keras.layers.Dense):
         print(f"layer {model.layers[index]} is not a Dense layer.")
         return None
@@ -106,8 +113,12 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, return_model
     layers = [layer.__class__.from_config(config) for layer,config in zip(model.layers, layer_configs)]
     optimizer_type = model.optimizer.__class__
     optimizer_config = model.optimizer.get_config()
+    index_layer_configuration = layer_configs[index]
+    node_amount = index_layer_configuration.get("units")
+    best_metric = utils.test_learning_speed(model, X, y)
+    best_configuration = layer_configs[index]
+    print(node_amount, best_metric)
     #Test with no layer at index
-    best_dense = None
     curr_layer = layers.pop(index) 
     test_model = tf.keras.models.Sequential(layers)
     test_model.build(np.shape(X))
@@ -115,10 +126,11 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, return_model
         optimizer=optimizer_type.from_config(optimizer_config),
         loss=model.loss
     )
-    best_metric = utils.test_learning_speed(test_model,X,y)
-    print(None, best_metric)
-    best_configuration = None
-    index_layer_configuration = layer_configs[index]
+    metric = utils.test_learning_speed(test_model,X,y)
+    print(None, metric)
+    if metric<best_metric:
+        best_metric = metric
+        best_configuration = None
     for node_amount in test_nodes:
         index_layer_configuration["units"] = node_amount
         layer_configs[index] = index_layer_configuration
@@ -134,6 +146,7 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, return_model
         if metric<best_metric:
             best_metric = metric
             best_configuration = layers[index].get_config()
+    return_model = kwargs.get("return_model",True)
     if not return_model:
         return (best_configuration, best_metric)
     if best_configuration == None:
@@ -149,18 +162,18 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, return_model
         loss=model.loss)
     return (test_model, best_metric)
 
-def opt_decay(model: tf.keras.models.Sequential,X,y, return_model=True,**kwargs):
+def opt_decay(model: tf.keras.models.Sequential,X,y,**kwargs):
     model = utils.check_compilation(model, X, kwargs)
-    default_decays = [0.95, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001, 0]
-    decays = kwargs.get("decays",default_decays)
+    decays = kwargs.get("decays",_default_decays)
     if not (isinstance(decays, list) or isinstance(decays, np.ndarray) or 1 in decays):
         print("Invalid decay in opt_decay: {decays}. Expected list or numpy array.\n"+
-              "Continuing execution with default decays {default_decays}")
+              "Continuing execution with default decays {_default_decays}")
         decays = default_decays
     optimizer_type = model.optimizer.__class__
     optimizer_config = model.optimizer.get_config()
     best_decay = optimizer_config["decay"]
     best_metric = utils.test_learning_speed(model,X,y)
+    print(f"decay: {best_decay}, {configurations.LEARNING_METRIC}:{best_metric}")
     for decay in decays:
         optimizer_config["decay"] = decay
         model.build(np.shape(X))
@@ -170,6 +183,7 @@ def opt_decay(model: tf.keras.models.Sequential,X,y, return_model=True,**kwargs)
         if(metric<best_metric):
             best_metric = metric
             best_decay = decay
+    return_model = kwargs.get("return_model",True)
     if not return_model:
         return (best_decay, best_metric)
     optimizer_config["decay"] = best_decay
