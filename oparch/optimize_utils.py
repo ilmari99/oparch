@@ -104,7 +104,7 @@ def get_layers_config(layers: list)->list:
     configs = [layer.get_config() for layer in layers]
     return configs
 
-def create_dict(model,learning_metrics={}):
+def create_dict(model: tf.keras.models.Sequential,learning_metrics={}) -> dict:
     dic = {
         "optimizer":None,
         "loss_function":None,
@@ -124,11 +124,7 @@ def create_dict(model,learning_metrics={}):
         dic["layers"][summary[0]]["activation"] = summary[2]
     return dic
 
-def string_format_model_dic(dic):
-    if isinstance(dic,tf.keras.models.Sequential):
-        dic = create_dict(dic)
-    if not isinstance(dic, dict):
-        raise TypeError(f"Excpected argument of type Sequential or dict, but received {type(dic)}")
+def _string_format_model_dict(dic: dict):
     string = f"\nOptimizer: {dic.get('optimizer')}\n"
     string = string + f"Loss function: {type(dic.get('loss_function')).__name__}\n"
     string = string + f"{dic.get('learning_metrics')}\n"
@@ -138,11 +134,20 @@ def string_format_model_dic(dic):
     return string
 
 def print_model(dic, learning_metrics={}):
+    """Takes in a a dict or a model. If argument is model, creates a dictionary from that model that is then used to print the model.
+
+    Args:
+        dic (dict or model): dictionary or model to be printed to stdout
+        learning_metrics (dict, optional): Dictionary with learning metrics for example {"LAST_LOSS":0.03567}. Defaults to {}.
+
+    Raises:
+        TypeError: dic is not a Sequential model or a dictionary
+    """    
     if isinstance(dic,tf.keras.models.Sequential):
         dic = create_dict(dic,learning_metrics=learning_metrics)
     if not isinstance(dic, dict):
         raise TypeError(f"Excpected argument of type Sequential or dict, but received {type(dic)}")
-    string = string_format_model_dic(dic)
+    string = _string_format_model_dict(dic)
     print(string)
         
         
