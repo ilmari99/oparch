@@ -16,8 +16,11 @@ class LossCallback(tf.keras.callbacks.Callback):
     "VALIDATION_ACCURACY":None,
     }
     
-    def __init__(self, verbose = 0, samples=0, epochs=configurations.TEST_EPOCHS):
+    def __init__(self, **kwargs):
         super().__init__()
+        epochs = kwargs.get("epochs",configurations.TEST_EPOCHS)
+        verbose = kwargs.get("verbose",0)
+        samples = kwargs.get("samples",0)
         self.verbose = verbose
         self.samples = samples
         self.current_epoch = 0
@@ -27,7 +30,7 @@ class LossCallback(tf.keras.callbacks.Callback):
             self.loss_array_epoch = np.zeros(epochs)
             self.loss_array_validation = np.zeros(epochs)
             self.accuracy_array_validation = np.zeros(epochs)
-            self.loss_array_batch = np.zeros(self.batch_count * epochs)
+            self.loss_array_batch = np.zeros(self.batch_count * configurations.TEST_EPOCHS)
         else:
             print("It is recommended to specify sample size when creating the LossCallback")
             self.loss_array_epoch = []
@@ -41,9 +44,10 @@ class LossCallback(tf.keras.callbacks.Callback):
         #Compare the difference in loss to the previous loss
         self.learning_metric["RELATIVE_IMPROVEMENT_EPOCH"] = np.mean(np.diff(self.loss_array_epoch)/self.loss_array_epoch[0:-1])
         self.learning_metric["RELATIVE_IMPROVEMENT_BATCH"] = np.mean(np.diff(self.loss_array_batch)/self.loss_array_batch[0:-1])
-        self.learning_metric["VALIDATION_LOSS"] = np.mean(self.loss_array_validation)
-        self.learning_metric["LAST_VALIDATION_LOSS"] = self.loss_array_validation[-1]
-        self.learning_metric["VALIDATION_ACCURACY"] = np.mean(self.accuracy_array_validation)
+        if "VALIDATION" in configurations.LEARNING_METRIC:
+            self.learning_metric["VALIDATION_LOSS"] = np.mean(self.loss_array_validation)
+            self.learning_metric["LAST_VALIDATION_LOSS"] = self.loss_array_validation[-1]
+            self.learning_metric["VALIDATION_ACCURACY"] = np.mean(self.accuracy_array_validation)
         if(self.verbose > 0):
             print(f"ITEMS:{self.learning_metric.items()}")
             if(self.verbose == 2):
@@ -75,7 +79,8 @@ class LossCallback(tf.keras.callbacks.Callback):
             print(f"Elapsed time in epoch: {elaps_time}")
             
     def plot_loss(self):
+        plt.figure()
         plt.plot(range(len(self.loss_array_batch)), self.loss_array_batch)
         plt.xlabel("Batches")
         plt.ylabel("Loss on batch")
-        plt.show()
+        #plt.show()
