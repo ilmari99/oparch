@@ -6,6 +6,12 @@ from . import configurations
 import time
 from sklearn.model_selection import train_test_split
 
+_layer_keys = {
+    "dense":["units","activation"],
+    "dropout":["rate"],
+    "conv2d":["filters,kernel_size","activation"]
+}
+
 def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
                         y: np.ndarray,**kwargs) -> float:
     """Tests a models learning speed. Returns an attribute from LossCallback.learning_metrics specified
@@ -81,12 +87,13 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
         return cb_loss.learning_metric["LAST_LOSS"]
     return cb_loss.learning_metric[return_metric]
 
-def check_compilation(model: tf.keras.models.Sequential, X, kwarg_dict, **kwargs) -> tf.keras.models.Sequential:
+def check_compilation(model: tf.keras.models.Sequential, X, kwarg_dict={}, **kwargs) -> tf.keras.models.Sequential:
     if model.optimizer is None: #if model is not compiled, compile it with optimizer and loss kwargs
         try:
             model.build(np.shape(X))
-            model.compile(optimizer=kwarg_dict["optimizer"], loss=kwarg_dict["loss"])
-            print("Model compiled with given optimizer and loss")
+            optimizer = kwargs.get("optimizer",kwarg_dict["optimizer"])
+            loss = kwargs.get("loss",kwarg_dict["loss"])
+            model.compile(optimizer=optimizer, loss=loss)
         except KeyError:
             raise KeyError("If the model is not compiled, you must specify the optimizer and loss")
     if model.optimizer.get_weights() or model.weights: #TODO: Model weights are not empty if the model is compiled, which it always is here
@@ -112,26 +119,44 @@ def create_dict(model: tf.keras.models.Sequential,learning_metrics={}) -> dict:
         "layers":{},
         "learning_metrics":learning_metrics,
     }
-    try:
+    if model.optimizer != None:
         dic["optimizer"] = model.optimizer.get_config()
-        dic["loss_function"] = model.loss.__class__.__name__
-        layer_configs = [layer.get_config() for layer in model.layers]
-    except AttributeError:
+    else:
         raise AttributeError("Model must be compiled before creating a dictionary.")
-    layers_summary = [(config.get("name"),config.get("units"), config.get("activation")) for config in layer_configs]
-    for summary in layers_summary:
-        dic["layers"][summary[0]] = {}
-        dic["layers"][summary[0]]["units"] = summary[1]
-        dic["layers"][summary[0]]["activation"] = summary[2]
+    dic["loss_function"] = model.loss.__class__.__name__
+    layer_configs = [layer.get_config() for layer in model.layers]
+    layers_summary = {}
+    for i,config in enumerate(layer_configs):
+        name = config.get("name")
+        layers_summary[name] = {}
+        keys = []
+        for layer_name in _layer_keys.keys():
+            if layer_name in name:
+                keys = _layer_keys[layer_name]
+                break
+        if not keys:
+            print(f"Layer {name} has not been implemented yet.")
+        for key in keys:
+            layers_summary[name][key] = config.get(key)
+    #Now: layers_summary = {
+        # "ccconv2d":{"filter":16,"kernel_size":(2,2),"activation":"relu"}
+        # "dense_1":{"units":1,"activation":"relu"},
+        # }
+    for layer in layers_summary:
+        dic["layers"][layer] = layers_summary[layer]
     return dic
 
 def _string_format_model_dict(dic: dict):
     string = f"\nOptimizer: {dic.get('optimizer')}\n"
     string = string + f"Loss function: {type(dic.get('loss_function')).__name__}\n"
-    string = string + f"{dic.get('learning_metrics')}\n"
-    string = string + f"{'LAYER':<12}{'ACTIVATION':<12}{'UNITS'}\n"
-    for layer in dic["layers"]:
-        string = string + f"{layer:<12}{dic['layers'][layer]['activation']:<12}{dic['layers'][layer]['units']}\n"
+    string = string + f"Learning metrics: {dic.get('learning_metrics')}\n"
+    #string = string + f"{'LAYER':<12}{'ACTIVATION':<12}{'UNITS'}\n"
+    for layer in dic["layers"]: #Here variable layer is the name of the layer
+        string = string + f"{layer:<12}"
+        keys = dic["layers"][layer].keys()
+        for key in keys:
+            string = string + f"{key:<12}:{dic['layers'][layer][key]:<12}"
+        string = string + "\n"
     return string
 
 def print_model(dic, learning_metrics={}):
@@ -150,9 +175,6 @@ def print_model(dic, learning_metrics={}):
         raise TypeError(f"Excpected argument of type Sequential or dict, but received {type(dic)}")
     string = _string_format_model_dict(dic)
     print(string)
-        
-        
-
     
 def get_copy_of_layers(layers:list) -> list:
     configs = get_layers_config(layers)
