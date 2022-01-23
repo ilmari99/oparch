@@ -86,7 +86,6 @@ def check_compilation(model: tf.keras.models.Sequential, X, kwarg_dict, **kwargs
         try:
             model.build(np.shape(X))
             model.compile(optimizer=kwarg_dict["optimizer"], loss=kwarg_dict["loss"])
-            print("Model compiled with given optimizer and loss")
         except KeyError:
             raise KeyError("If the model is not compiled, you must specify the optimizer and loss")
     if model.optimizer.get_weights() or model.weights: #TODO: Model weights are not empty if the model is compiled, which it always is here
