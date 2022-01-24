@@ -24,8 +24,8 @@ class LossCallback(tf.keras.callbacks.Callback):
         self.batch_size = kwargs.get("batch_size",configurations.BATCH_SIZE)
         self.current_epoch = 0
         self.epoch_start = 0
+        self.batch_count = int(np.ceil((self.samples/self.batch_size)))
         if self.samples>0:
-            self.batch_count = int(np.ceil((self.samples/self.batch_size)))
             self.loss_array_epoch = np.zeros(self.epochs)
             self.loss_array_validation = np.zeros(self.epochs)
             self.accuracy_array_validation = np.zeros(self.epochs)
@@ -45,7 +45,8 @@ class LossCallback(tf.keras.callbacks.Callback):
             self.learning_metric["RELATIVE_IMPROVEMENT_EPOCH"] = np.mean(np.diff(self.loss_array_epoch)/self.loss_array_epoch[0:-1])
             self.learning_metric["RELATIVE_IMPROVEMENT_BATCH"] = np.mean(np.diff(self.loss_array_batch)/self.loss_array_batch[0:-1])
         self.loss_array_validation = [i for i in self.loss_array_validation if i is not None] #If validations are empty
-        if self.loss_array_validation:
+        self.accuracy_array_validation = [i for i in self.accuracy_array_validation if i is not None]
+        if self.loss_array_validation and self.accuracy_array_validation:
             self.learning_metric["VALIDATION_LOSS"] = np.mean(self.loss_array_validation)
             self.learning_metric["LAST_VALIDATION_LOSS"] = self.loss_array_validation[-1]
             self.learning_metric["VALIDATION_ACCURACY"] = np.mean(self.accuracy_array_validation)
