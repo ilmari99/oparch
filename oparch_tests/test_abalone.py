@@ -11,7 +11,7 @@ from sklearn.model_selection import train_test_split
 from oparch import configurations
 from oparch import LossCallback
 import pandas as pd
-configurations.configure(TEST_EPOCHS = 10,samples=5000)
+#configurations.configure(TEST_EPOCHS = 10,samples=5000)
 abalone_train = pd.read_csv(
     "https://storage.googleapis.com/download.tensorflow.org/data/abalone_train.csv",
     names=["Length", "Diameter", "Height", "Whole weight", "Shucked weight",
@@ -65,20 +65,22 @@ else:
     index = index + 1
 (model, loss_act) = opt.opt_activation(model, index, X, y)
 (model, loss_units) = opt.opt_dense_units(model, index, X, y)
-print(model.optimizer.weights)
+cb_loss = opt.LossCallback.LossCallback()
 hist = model.fit(
         X, y,
         epochs=10,
         verbose=1,
         validation_data=(X_test,y_test),
         batch_size=configurations.BATCH_SIZE,
-        #callbacks=[cb_loss],
+        callbacks=[cb_loss],
         shuffle=True,
         use_multiprocessing=True,
 )
+cb_loss.plot_loss()
 opt.utils.print_model(model)
 y_pred = model.predict(X_test)
 plt.plot(range(len(y_pred)),y_pred)
 plt.plot(range(len(y_test)),y_test)
+cb_loss.plot_loss()
 plt.show()
 
