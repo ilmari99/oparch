@@ -5,7 +5,7 @@ if __name__ == "__main__":
     sys.path.append(str(path_root))
 import sys
 import os
-from oparch_tests import test_tools
+from oparch_tests import testing_utils
 import oparch
 import unittest
 from oparch import optimize_utils as utils
@@ -14,7 +14,7 @@ import numpy as np
 
 class Test_optimize_utils(unittest.TestCase):
     def setUp(self):
-        self.X, self.y = test_tools.get_xy(samples=10,features=3)
+        self.X, self.y = testing_utils.get_xy(samples=10,features=3)
         self.layers = [tf.layers.Dense(6,activation="sigmoid"),tf.layers.Dropout(0.1),tf.layers.Dense(1),tf.layers.Dense(1)]
         self.model = tf.models.Sequential(self.layers)
         
@@ -46,7 +46,8 @@ class Test_optimize_utils(unittest.TestCase):
                                    'dense_1': {'units': 1, 'activation': 'linear'},
                                    'dense_2': {'units': 1, 'activation': 'linear'}
                                    },
-                        'learning_metrics': {"LAST_LOSS":0.03567}}
+                        'learning_metrics': {"LAST_LOSS":0.03567}
+                        }
         new_dict = utils.create_dict(self.model,learning_metrics={"LAST_LOSS":0.03567})
         new_keys = ["dense","dropout","dense_1","dense_2"]
         keys = new_dict["layers"].copy()
@@ -68,13 +69,36 @@ class Test_optimize_utils(unittest.TestCase):
         kwarg_dict = {}
         with self.assertRaises(KeyError):
             utils.check_compilation(self.model, self.X, kwarg_dict) #Not compiled and no optimizer and loss specified
-            utils.check_compilation(model, X,kwarg_dict,optimizer=tf.optimizers.RMSprop(0.01))#optimizer passed as kwarg
+            utils.check_compilation(model, X,kwarg_dict,optimizer=tf.optimizers.RMSprop(0.01))#Only optimizer passed as kwarg
         kwarg_dict["loss"] = tf.losses.MeanSquaredError()
         kwarg_dict["optimizer"] = tf.optimizers.RMSprop(0.01)
         utils.check_compilation(self.model, self.X, kwarg_dict)#loss and optimizer passed as a dict
         utils.check_compilation(self.model, self.X,{},optimizer=kwarg_dict["optimizer"],loss=kwarg_dict["loss"])#using kwargs
         self.build_compile()
         utils.check_compilation(self.model, self.X)#Model compiled before calling
+        
+    def test_test_learning_speed(self):
+        def do_test():
+            return utils.test_learning_speed(self.model,
+                                  self.X, self.y,
+                                  epochs = epochs,
+                                  samples = samples,
+                                  validation_split=validation_split,
+                                  batch_size = batch_size,
+                                  return_metric=return_metric
+                                  )
+        test_values = [(1,10,0.2,"LAST_LOSS",1,0.4371974468231201),
+                       (2,10,0.2,"RELATIVE_IMPROVEMENT_EPOCH",1,-0.8865967464562842),
+                       (1,10,1,"VALIDATION_LOSS",1,0.0004439638869371265),
+                       (1,100,0.2,"LAST_LOSS",1,0.4371974468231201),
+                       (1,0,0.2,"LAST_LOSS",1,0.4304800033569336),
+                       ]
+        self.build_compile() #build and compile self.model
+        for values in test_values:
+            epochs,samples,validation_split,return_metric,batch_size,expected = values
+            m = do_test()
+            self.assertAlmostEqual(m, expected)
+        
             
         
     
