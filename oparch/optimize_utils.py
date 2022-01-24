@@ -65,7 +65,6 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
         print("rebuild and compile the model to get a clean optimizer")
     #Save the models weights to return the model to its original state after testing the learning speed
     model.save_weights("test_weights.h5")
-    #samples = np.shape(y)[0] #TODO: this uses all available data instead of samples
     verbose = 0
     validation_data = None
     if samples>0:
