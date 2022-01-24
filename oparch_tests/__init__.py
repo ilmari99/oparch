@@ -17,6 +17,4 @@ import sklearn
 import random
 os.environ["CUDA_VISIBLE_DEVICES"] = ""
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-np.random.seed(seed=42) #Also sets sk.learn random number
-tf.random.set_seed(42)
-random.seed(42)
+oparch.__reset_random__()
