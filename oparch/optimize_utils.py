@@ -43,16 +43,16 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     batch_size = kwargs.get("batch_size",configurations.BATCH_SIZE)
     if not isinstance(samples,int) or samples > np.size(X,axis=0):
         samples = np.size(X,axis=0)
-        print(f"Incorrect sample size. Using {samples} samples.")
+        #print(f"Incorrect sample size. Using {samples} samples.")
     if validation_split<0 or validation_split>1:
         validation_split = 0.2
-        print(f"Incorrect validation_split. Using {validation_split} split.")
+        #print(f"Incorrect validation_split. Using {validation_split} split.")
     if not isinstance(epochs, int) or epochs<1:
         epochs = 1
-        print(f"Incorrect epochs. Using {epochs} epochs.")
+        #print(f"Incorrect epochs. Using {epochs} epochs.")
     if not isinstance(batch_size, int) or batch_size<1 or (batch_size>samples and samples > 0):
         batch_size = configurations.BATCH_SIZE
-        print(f"Incorrect batch_size. Using {batch_size} batch_size.")
+        #print(f"Incorrect batch_size. Using {batch_size} batch_size.")
     try:
         model.optimizer.get_weights()
     except AttributeError:
