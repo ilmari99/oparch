@@ -5,6 +5,7 @@ import random
 from . import configurations
 import time
 from sklearn.model_selection import train_test_split
+import oparch
 
 _layer_keys = {
     "dense":["units","activation"],
@@ -33,15 +34,25 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     Returns:
         float: return_metric key in LossCallback.learning_metrics. For example loss after last training epoch.
     """
+    oparch.__reset_random__()
     allowed_kwargs = {"samples", "validation_split","return_metric","epochs","batch_size"}
     samples = kwargs.get("samples",configurations.TEST_SAMPLES)#TODO: If samples are configured during run time, the changes are not reflected
     validation_split = kwargs.get("validation_split",0.2)
     return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
     epochs = kwargs.get("epochs",configurations.TEST_EPOCHS)
     batch_size = kwargs.get("batch_size",configurations.BATCH_SIZE)
-    if samples > np.size(X,axis=0):
+    if not isinstance(samples,int) or samples > np.size(X,axis=0):
         samples = np.size(X,axis=0)
-    
+        print(f"Incorrect sample size. Using {samples} samples.")
+    if validation_split<0 or validation_split>1:
+        validation_split = 0.2
+        print(f"Incorrect validation_split. Using {validation_split} split.")
+    if not isinstance(epochs, int) or epochs<1:
+        epochs = 1
+        print(f"Incorrect epochs. Using {epochs} epochs.")
+    if not isinstance(batch_size, int) or batch_size<1 or (batch_size>samples and samples > 0):
+        batch_size = configurations.BATCH_SIZE
+        print(f"Incorrect batch_size. Using {batch_size} batch_size.")
     try:
         model.optimizer.get_weights()
     except AttributeError:
@@ -57,13 +68,17 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     #samples = np.shape(y)[0] #TODO: this uses all available data instead of samples
     verbose = 0
     validation_data = None
-    sample_indexes = random.sample(range(np.size(X,axis=0)),samples)
-    X = X[sample_indexes]
-    y = y[sample_indexes]
-    if("VALIDATION" in configurations.LEARNING_METRIC): #If the learning metric should be calculated from validation set
-        X, x_test, y, y_test = train_test_split(X, y,test_size=0.2, random_state=42)
+    if samples>0:
+        sample_indexes = random.sample(range(np.size(X,axis=0)),samples)
+        X = X[sample_indexes]
+        y = y[sample_indexes]
+    if("VALIDATION" in return_metric): #If the learning metric should be calculated from validation set
+        X, x_test, y, y_test = train_test_split(X, y,test_size=validation_split, random_state=42)
         validation_data = (x_test,y_test)
-    cb_loss = lcb.LossCallback(samples=samples)
+    cb_loss = lcb.LossCallback(samples=samples,
+                               epochs=epochs,
+                               batch_size=batch_size,
+                               )
     start = time.time()
     hist = model.fit(
         X, y,
@@ -83,11 +98,14 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
                   loss=model.loss)
     #if only one epoch is done, returns the last loss
-    if(configurations.TEST_EPOCHS==1):
+    return_value = cb_loss.learning_metric[return_metric]
+    if return_value == None or return_value == np.nan:
+        print(f"Return metric {return_metric} is None. Using LAST_LOSS instead.")
         return cb_loss.learning_metric["LAST_LOSS"]
-    return cb_loss.learning_metric[return_metric]
+    return return_value
 
 def check_compilation(model: tf.keras.models.Sequential, X, kwarg_dict={}, **kwargs) -> tf.keras.models.Sequential:
+    oparch.__reset_random__()
     if model.optimizer is None: #if model is not compiled, compile it with optimizer and loss kwargs
         try:
             model.build(np.shape(X))
@@ -96,7 +114,7 @@ def check_compilation(model: tf.keras.models.Sequential, X, kwarg_dict={}, **kwa
             model.compile(optimizer=optimizer, loss=loss)
         except KeyError:
             raise KeyError("If the model is not compiled, you must specify the optimizer and loss")
-    if model.optimizer.get_weights() or model.weights: #TODO: Model weights are not empty if the model is compiled, which it always is here
+    elif model.optimizer.get_weights() or model.weights: #TODO: Model weights are not empty if the model is compiled, which it always is here
         layers = get_copy_of_layers(model.layers)
         optimizer_config = model.optimizer.get_config()
         optimizer = model.optimizer.__class__.from_config(optimizer_config)
