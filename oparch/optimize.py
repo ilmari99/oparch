@@ -3,6 +3,7 @@ import tensorflow as tf
 from . import optimize_utils as utils
 from . import LossCallback as lcb
 from . import configurations
+import oparch
 import copy
 _default_learning_rates = [1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
 _default_nodes = [2**i for i in range(0,8)] #Node amounts to test
@@ -10,7 +11,7 @@ _default_decays = [0.95, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001, 0]
 
 
 def opt_learning_rate(model: tf.keras.models.Sequential, X, y,**kwargs) -> (float, float):
-    model = utils.check_compilation(model, X, kwargs)
+    model = utils.check_compilation(model, X, **kwargs)
     learning_rates = kwargs.get("learning_rates",_default_learning_rates)
     if not (isinstance(learning_rates, list) or isinstance(learning_rates, np.ndarray)):
         print("Invalid learning_rates in opt_learning_rate: {learning_rates}. Expected list or numpy array.\n"+
@@ -39,7 +40,7 @@ def opt_learning_rate(model: tf.keras.models.Sequential, X, y,**kwargs) -> (floa
 
 def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
     #TODO: when this changes the loss function to logarithmic loss, sometimes the results are very weird
-    model = utils.check_compilation(model, X, kwargs)
+    model = utils.check_compilation(model, X, **kwargs)
     metric_type = "RELATIVE_IMPROVEMENT_EPOCH" #Use this, because losses are not necessarily comparable
     best_loss_fun = model.loss
     best_metric = utils.test_learning_speed(model,X,y,return_metric=metric_type)
@@ -49,6 +50,7 @@ def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
     if(not all(isinstance(yi,int) for yi in y)): #TODO Tämän ehdon pitäisi tarkistaa, onko y categorinen vai ei
         loss_function_dict = configurations.REGRESSION_LOSS_FUNCTIONS
     for loss_fun in loss_function_dict.values():
+        oparch.__reset_random__()
         model.compile(optimizer=optimizer_type.from_config(optimizer_config), loss=loss_fun)
         metric = utils.test_learning_speed(model, X, y, return_metric=metric_type)
         print(type(loss_fun).__name__, {metric_type},{metric})
@@ -63,7 +65,7 @@ def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
 
 def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> dict:
     print(f"Optimizing activation function at index {index}")
-    model = utils.check_compilation(model, X, kwargs)
+    model = utils.check_compilation(model, X, **kwargs)
     if not isinstance(model.layers[index],tf.keras.layers.Dense):
         return None
     layers = model.layers
@@ -108,7 +110,7 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
         print("Invalid learning_rates in opt_dense_units: {test_nodes}. Expected list or numpy array.\n"+
               "Continuing execution with default test_nodes {_default_nodes}")
         test_nodes = _default_nodes
-    model = utils.check_compilation(model, X, kwargs)
+    model = utils.check_compilation(model, X, **kwargs)
     layer_configs = [layer.get_config() for layer in model.layers]
     layers = [layer.__class__.from_config(config) for layer,config in zip(model.layers, layer_configs)]
     optimizer_type = model.optimizer.__class__
@@ -163,7 +165,7 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
     return (test_model, best_metric)
 
 def opt_decay(model: tf.keras.models.Sequential,X,y,**kwargs):
-    model = utils.check_compilation(model, X, kwargs)
+    model = utils.check_compilation(model, X, **kwargs)
     decays = kwargs.get("decays",_default_decays)
     if not (isinstance(decays, list) or isinstance(decays, np.ndarray) or 1 in decays):
         print("Invalid decay in opt_decay: {decays}. Expected list or numpy array.\n"+
@@ -175,6 +177,7 @@ def opt_decay(model: tf.keras.models.Sequential,X,y,**kwargs):
     best_metric = utils.test_learning_speed(model,X,y)
     print(f"decay: {best_decay}, {configurations.LEARNING_METRIC}:{best_metric}")
     for decay in decays:
+        oparch.__reset_random__()
         optimizer_config["decay"] = decay
         model.build(np.shape(X))
         model.compile(optimizer=optimizer_type.from_config(optimizer_config),loss=model.loss)
