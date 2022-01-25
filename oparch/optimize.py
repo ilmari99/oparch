@@ -17,23 +17,28 @@ def opt_learning_rate(model: tf.keras.models.Sequential, X, y,**kwargs) -> (floa
         print("Invalid learning_rates in opt_learning_rate: {learning_rates}. Expected list or numpy array.\n"+
               "Continuing execution with default learning rates {_default_learning_rates}")
         learning_rates = _default_learning_rates
+    return_metric = kwargs.get("learning_metric",configurations.LEARNING_METRIC)
+    results = list(range(len(learning_rates)+2))
+    results[0] = ["learning_rate",return_metric]
     optimizer_type = model.optimizer.__class__
     optimizer_config = model.optimizer.get_config()
     best_lr = optimizer_config["learning_rate"] #prints correctly for example 0.01
-    best_metric = utils.test_learning_speed(model,X,y)
-    print(f"Learning rate: {best_lr}, {configurations.LEARNING_METRIC}:{best_metric}") #TODO: prints: 0.010000000149011612
-    for lr in learning_rates:
+    best_metric = utils.test_learning_speed(model,X,y,**kwargs)
+    print(f"Learning rate: {best_lr}, {return_metric}:{best_metric}") #TODO: prints: 0.010000000149011612
+    results[1] = [best_lr,best_metric]
+    for i,lr in enumerate(learning_rates):
         model.build(np.shape(X))
         optimizer_config["learning_rate"] = lr
         model.compile(optimizer=optimizer_type.from_config(optimizer_config),loss=model.loss)
-        metric = utils.test_learning_speed(model,X,y)
-        print(f"Learning rate: {lr}, {configurations.LEARNING_METRIC}:{metric}")
+        metric = utils.test_learning_speed(model,X,y,**kwargs)
+        print(f"Learning rate: {lr}, {return_metric}:{metric}")
+        results[i+2] = [lr,metric]
         if(metric<best_metric):
             best_metric = metric
             best_lr = lr
     return_model = kwargs.get("return_model",True)
     if not return_model:
-        return (best_lr, best_metric)
+        return results
     optimizer_config["learning_rate"] = best_lr
     model.compile(optimizer=optimizer_type.from_config(optimizer_config),loss=model.loss)
     return (model, best_metric)
