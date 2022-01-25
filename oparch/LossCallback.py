@@ -78,9 +78,11 @@ class LossCallback(tf.keras.callbacks.Callback):
             elaps_time = time.time() - self.epoch_start
             print(f"Elapsed time in epoch: {elaps_time}")
             
-    def plot_loss(self):
+    def plot_loss(self,show=False):
         plt.figure()
         plt.plot(range(len(self.loss_array_batch)), self.loss_array_batch)
         plt.xlabel("Batches")
         plt.ylabel("Loss on batch")
+        if show:
+            plt.show()
         
