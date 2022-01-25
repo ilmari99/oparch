@@ -41,7 +41,8 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
     epochs = kwargs.get("epochs",configurations.TEST_EPOCHS)
     batch_size = kwargs.get("batch_size",configurations.BATCH_SIZE)
-    if not isinstance(samples,int) or samples > np.size(X,axis=0):
+    verbose = kwargs.get("verbose",0)
+    if not isinstance(samples,int) or samples > np.size(X,axis=0) or samples <= 0:
         samples = np.size(X,axis=0)
         #print(f"Incorrect sample size. Using {samples} samples.")
     if validation_split<0 or validation_split>1:
@@ -56,19 +57,23 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     try:
         model.optimizer.get_weights()
     except AttributeError:
-        raise AttributeError("The model must be built before testing the learning speed")
+        raise AttributeError("The model must be built but not used before testing the learning speed")
     #rebuild and compile the model to get a clean optimizer
-    if model.optimizer.get_weights(): #If list is not empty
+    if model.optimizer.get_weights(): #If list is not empty TODO: If model is trained and then compiled with empty optimizer, incorrect results
+        layers = get_copy_of_layers(model.layers)
+        optimizer_type = model.optimizer.__class__
+        optimizer_config = model.optimizer.get_config()
+        loss = model.loss
+        model = tf.keras.models.Sequential(layers)
         model.build(np.shape(X))
-        model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
-                  loss=model.loss)
-        print("rebuild and compile the model to get a clean optimizer")
+        model.compile(optimizer=optimizer_type.from_config(optimizer_config),
+                  loss=loss)
+        print("Rebuilt and recompiled the model to get a clean optimizer for testing")
     #Save the models weights to return the model to its original state after testing the learning speed
     model.save_weights("test_weights.h5")
-    verbose = 0
     validation_data = None
     if samples>0:
-        sample_indexes = random.sample(range(np.size(X,axis=0)),samples)
+        sample_indexes = random.sample(range(np.size(X,axis=0)),samples,)
         X = X[sample_indexes]
         y = y[sample_indexes]
     if("VALIDATION" in return_metric): #If the learning metric should be calculated from validation set
@@ -77,7 +82,9 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     cb_loss = lcb.LossCallback(samples=samples,
                                epochs=epochs,
                                batch_size=batch_size,
+                               verbose=verbose,
                                )
+    oparch.__reset_random__()
     start = time.time()
     hist = model.fit(
         X, y,
@@ -86,8 +93,6 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
         validation_data=validation_data,
         batch_size=batch_size,
         callbacks=[cb_loss],
-        shuffle=True,
-        use_multiprocessing=True,
     )
     elapsed_time = time.time() - start
     #Load the weights the model had when it came to testing, so testing doesn't affect the model itself
@@ -103,26 +108,25 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
         return cb_loss.learning_metric["LAST_LOSS"]
     return return_value
 
-def check_compilation(model: tf.keras.models.Sequential, X, kwarg_dict={}, **kwargs) -> tf.keras.models.Sequential:
-    oparch.__reset_random__()
+def check_compilation(model: tf.keras.models.Sequential, X, **kwargs) -> tf.keras.models.Sequential:
+    layers = get_copy_of_layers(model.layers)
     if model.optimizer is None: #if model is not compiled, compile it with optimizer and loss kwargs
-        try:
-            model.build(np.shape(X))
-            optimizer = kwargs.get("optimizer",kwarg_dict["optimizer"])
-            loss = kwargs.get("loss",kwarg_dict["loss"])
+        model = tf.keras.models.Sequential(layers)
+        model.build(np.shape(X))
+        optimizer = kwargs.get("optimizer")
+        loss = kwargs.get("loss")
+        if optimizer is not None and loss is not None:
             model.compile(optimizer=optimizer, loss=loss)
-        except KeyError:
-            raise KeyError("If the model is not compiled, you must specify the optimizer and loss")
+        else:
+            raise KeyError("If the model is not compiled, you must specify the optimizer and loss when checking compilation.")
     elif model.optimizer.get_weights() or model.weights: #TODO: Model weights are not empty if the model is compiled, which it always is here
-        layers = get_copy_of_layers(model.layers)
         optimizer_config = model.optimizer.get_config()
         optimizer = model.optimizer.__class__.from_config(optimizer_config)
-        optimizer = kwarg_dict.get("optimizer",optimizer)
-        loss = kwarg_dict.get("loss",model.loss)
+        optimizer = kwargs.get("optimizer",optimizer)
+        loss = kwargs.get("loss",model.loss)
         model = tf.keras.models.Sequential(layers)
         model.build(np.shape(X))
         model.compile(optimizer=optimizer, loss=loss)
-        #print("It is recommended to use a fresh model, that has not been trained, to ensure correct results and faster execution")
     return model
 
 def get_layers_config(layers: list)->list:
@@ -193,6 +197,7 @@ def print_model(dic, learning_metrics={}):
     string = _string_format_model_dict(dic)
     print(string)
     
+    
 def get_copy_of_layers(layers:list) -> list:
     configs = get_layers_config(layers)
     names = list(range(len(configs)))
@@ -201,8 +206,22 @@ def get_copy_of_layers(layers:list) -> list:
         if name in names:
             config["name"] = "c"+config["name"]
         names.append(name)
+    configs = add_seed_configs(configs)
     new_layers = [layer.__class__.from_config(config) for layer,config in zip(layers, configs)]
     return new_layers
+
+def add_seed_configs(configs):
+    for config in configs:
+        keys = config.keys()
+        if "seed" in keys:
+            config["seed"] = 42
+        elif "kernel_initializer" in keys and "config" in config["kernel_initializer"].keys():
+            config["kernel_initializer"]["config"]["seed"] = 42
+        else:
+            print(f"No seed key found for layer {config.get('name')}")
+            
+            
+    return configs
 
 def get_dense_indices(model: tf.keras.models.Sequential) -> list:
     dense_indices = []
