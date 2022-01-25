@@ -22,7 +22,7 @@ X = np.array(abalone_features)
 y = np.array(abalone_labels)
 print(f"Abalone samples: {np.shape(X)}")
 X,X_test,y,y_test = train_test_split(X,y,test_size=0.2)
-layers = [tf.keras.layers.Dense(64),tf.keras.layers.Dense(1)] #A typical structure
+layers = [tf.keras.layers.Dense(1),tf.keras.layers.Dense(1),tf.keras.layers.Dense(1),tf.keras.layers.Dense(1)] #A typical structure
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
@@ -37,11 +37,12 @@ hist = model.fit(
         shuffle=True,
         use_multiprocessing=True,
 )
+cb_loss.plot_loss()
 opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
 y_pred = model.predict(X_test)
+plt.figure()
 plt.plot(range(len(y_pred)),y_pred)
 plt.plot(range(len(y_test)),y_test)
-plt.figure(2)
 layers = [tf.keras.layers.Dense(1),tf.keras.layers.Dense(1),tf.keras.layers.Dense(1),tf.keras.layers.Dense(1)]
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
@@ -77,10 +78,10 @@ hist = model.fit(
         use_multiprocessing=True,
 )
 cb_loss.plot_loss()
-opt.utils.print_model(model)
+opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
 y_pred = model.predict(X_test)
+plt.figure()
 plt.plot(range(len(y_pred)),y_pred)
 plt.plot(range(len(y_test)),y_test)
-cb_loss.plot_loss()
 plt.show()
 
