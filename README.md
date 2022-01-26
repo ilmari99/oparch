@@ -1,5 +1,7 @@
 py -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ oparch
 
+Note: the version might not always be up-to-date
+
 TODO:
 - Support for more layers and parameters in optimize.py
 - ability to optimize multiple layers with one function call
