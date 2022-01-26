@@ -169,7 +169,7 @@ class Test_optimize_utils(unittest.TestCase):
             x,y,
             epochs=5,
             batch_size=45,
-            verbose = 1
+            verbose = 0
         )
         model.compile(optimizer=tf.keras.optimizers.RMSprop(),loss=tf.keras.losses.MeanSquaredError())
         met = utils.test_learning_speed(model, x, y, batch_size=45,verbose=2,epochs=5,samples=200)
