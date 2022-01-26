@@ -102,7 +102,7 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
                   loss=model.loss)
     #if only one epoch is done, returns the last loss
-    return_value = round(cb_loss.learning_metric[return_metric],5)
+    return_value = round(cb_loss.learning_metric.get(return_metric,np.nan),5)
     if return_value == None or return_value == np.nan:
         print(f"Return metric {return_metric} is None. Using LAST_LOSS instead.")
         return cb_loss.learning_metric["LAST_LOSS"]
