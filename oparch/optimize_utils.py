@@ -102,11 +102,18 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
                   loss=model.loss)
     #if only one epoch is done, returns the last loss
-    return_value = cb_loss.learning_metric[return_metric]
+    return_value = round(cb_loss.learning_metric[return_metric],5)
     if return_value == None or return_value == np.nan:
         print(f"Return metric {return_metric} is None. Using LAST_LOSS instead.")
         return cb_loss.learning_metric["LAST_LOSS"]
     return return_value
+
+def layers_from_configs(layers,configs):
+    configs = add_seed_configs(configs)
+    if isinstance(layers,tf.keras.models.Sequential):
+        layers = model.layers
+    new_layers = [layer.__class__.from_config(config) for layer,config in zip(layers, configs)]
+    return new_layers
 
 def check_compilation(model: tf.keras.models.Sequential, X, **kwargs) -> tf.keras.models.Sequential:
     layers = get_copy_of_layers(model.layers)
@@ -144,7 +151,10 @@ def create_dict(model: tf.keras.models.Sequential,learning_metrics={}) -> dict:
         dic["optimizer"] = model.optimizer.get_config()
     else:
         raise AttributeError("Model must be compiled before creating a dictionary.")
-    dic["loss_function"] = model.loss.__class__.__name__
+    if isinstance(model.loss,str):
+        dic["loss_function"] = model.loss
+    else:
+        dic["loss_function"] = model.loss.__class__.__name__
     layer_configs = [layer.get_config() for layer in model.layers]
     layers_summary = {}
     for i,config in enumerate(layer_configs):
