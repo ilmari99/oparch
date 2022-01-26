@@ -48,21 +48,22 @@ def opt_learning_rate(model: tf.keras.models.Sequential, X, y,**kwargs) -> (floa
         return results
     optimizer_config["learning_rate"] = best_lr
     model.compile(optimizer=optimizer_type.from_config(optimizer_config),loss=model.loss)
-    return (model, best_metric)
+    return model
 
 def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
     #TODO: when this changes the loss function to logarithmic loss, sometimes the results are very weird
     model = utils.check_compilation(model, X, **kwargs)
-    return_metric = kwargs.get("return_metric","RELATIVE_IMPROVEMENT_EPOCH")
-    results = list(range(len(configurations.REGRESSION_LOSS_FUNCTIONS)))
+    if not "return_metric" in kwargs:
+        kwargs["return_metric"] = "RELATIVE_IMPROVEMENT_EPOCH"
+    return_metric = kwargs.get("return_metric")
+    results = list(range(len(configurations.REGRESSION_LOSS_FUNCTIONS)+2))
     results[0] = ["loss function",return_metric]
-    
     best_loss_fun = model.loss
-    best_metric = utils.test_learning_speed(model,X,y,return_metric=return_metric)
+    best_metric = utils.test_learning_speed(model,X,y,**kwargs)
     optimizer_config = model.optimizer.get_config()
     optimizer_type = model.optimizer.__class__
     results[1] = [type(best_loss_fun).__name__, best_metric]
-    print(type(best_loss_fun).__name__, {return_metric},{best_metric})
+    print(type(best_loss_fun).__name__, return_metric,best_metric)
     if(not all(isinstance(yi,int) for yi in y)): #TODO Tämän ehdon pitäisi tarkistaa, onko y categorinen vai ei
         loss_function_dict = configurations.REGRESSION_LOSS_FUNCTIONS
     for i, loss_fun in enumerate(loss_function_dict.values()):
@@ -70,7 +71,7 @@ def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
         model.compile(optimizer=optimizer_type.from_config(optimizer_config), loss=loss_fun)
         metric = utils.test_learning_speed(model, X, y, **kwargs)
         results[i+2] = [type(loss_fun).__name__,metric]
-        print(type(loss_fun).__name__, {return_metric},{metric})
+        print(type(loss_fun).__name__, return_metric,metric)
         if(metric<best_metric):
             best_loss_fun = loss_fun
             best_metric = metric
@@ -78,7 +79,7 @@ def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
     if not return_model:
         return results
     model.compile(optimizer=optimizer_type.from_config(optimizer_config),loss=best_loss_fun)
-    return (model, best_metric)
+    return model
 
 def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> dict:
     print(f"Optimizing activation function at index {index}")
@@ -119,7 +120,7 @@ def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> 
     test_model.build(np.shape(X))
     test_model.compile(optimizer=model.optimizer.__class__.from_config(optimizer_config),
                   loss=model.loss)
-    return (test_model,best_metric)
+    return test_model
 
 def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
     if not isinstance(model.layers[index],tf.keras.layers.Dense):
@@ -189,7 +190,7 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
     test_model.build(np.shape(X))
     test_model.compile(optimizer=optimizer_type.from_config(optimizer_config),
         loss=model.loss)
-    return (test_model, best_metric)
+    return test_model
 
 def opt_decay(model: tf.keras.models.Sequential,X,y,**kwargs):
     model = utils.check_compilation(model, X, **kwargs)
@@ -224,4 +225,4 @@ def opt_decay(model: tf.keras.models.Sequential,X,y,**kwargs):
     optimizer_config["decay"] = best_decay
     model.build(np.shape(X))
     model.compile(optimizer=optimizer_type.from_config(optimizer_config),loss=model.loss)
-    return (model,best_metric)
+    return model
