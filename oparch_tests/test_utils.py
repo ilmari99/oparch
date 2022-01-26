@@ -111,12 +111,12 @@ class Test_optimize_utils(unittest.TestCase):
         self.assertEqual(str(random1), str(random2))
         
     def test_test_learning_speed1(self):
-        test_values = [(1,10,0.2,"LAST_LOSS",1,0.04329795017838478),#Normal run with kwargs
-                       (2,10,0.2,"RELATIVE_IMPROVEMENT_EPOCH",1,0.018506277153210033),#Run with different loss metric
-                       (1,10,1,"VALIDATION_LOSS",1,0.008057928644120693),#Run with validation_split = 1
-                       (1,100,0.2,"LAST_LOSS",1,0.04329795017838478),#run with more samples than data
-                       (1,0,0.2,"LAST_LOSS",1,0.04329795017838478),#samples = 0, uses lists and appending in LossCallback
-                       (2,10,0.2,"RELATIVE_IMPROVEMENT_EPOCH",16,0.018506277153210033)
+        test_values = [(1,10,0.2,"LAST_LOSS",1,0.0433),#Normal run with kwargs
+                       (2,10,0.2,"RELATIVE_IMPROVEMENT_EPOCH",1,0.01851),#Run with different loss metric
+                       (1,10,1,"VALIDATION_LOSS",1,0.00806),#Run with validation_split = 1
+                       (1,100,0.2,"LAST_LOSS",1,0.0433),#run with more samples than data
+                       (1,0,0.2,"LAST_LOSS",1,0.0433),#samples = 0, uses lists and appending in LossCallback
+                       (2,10,0.2,"RELATIVE_IMPROVEMENT_EPOCH",16,0.01851)
                        ]
         self.build_compile() #build and compile self.model
         for values in test_values:
@@ -153,10 +153,10 @@ class Test_optimize_utils(unittest.TestCase):
             x,y,
             epochs=5,
             batch_size=45,
-            verbose = 0
+            verbose = 0,
         )
         met = utils.test_learning_speed(model, x, y, batch_size=45,verbose=0,epochs=5,samples=200)
-        self.assertAlmostEqual(hist.history["loss"][-1], met) #TODO: some randomness still in the results
+        self.assertAlmostEqual(round(hist.history["loss"][-1],5), met) #TODO: some randomness still in the results
         
     def test_test_learning_speed5(self):
         x,y = testing_utils.get_xy(samples=169,features=5)
@@ -173,7 +173,7 @@ class Test_optimize_utils(unittest.TestCase):
         )
         model.compile(optimizer=tf.keras.optimizers.RMSprop(),loss=tf.keras.losses.MeanSquaredError())
         met = utils.test_learning_speed(model, x, y, batch_size=45,verbose=2,epochs=5,samples=200)
-        self.assertEqual(hist.history["loss"][-1], met) #TODO: if optimizer is changed after training and model is then tested
+        self.assertEqual(round(hist.history["loss"][-1],5), met) #TODO: if optimizer is changed after training and model is then tested
             
         
 
