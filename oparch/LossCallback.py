@@ -47,7 +47,7 @@ class LossCallback(tf.keras.callbacks.Callback):
         self.loss_array_validation = [i for i in self.loss_array_validation if i is not None] #If validations are empty
         self.accuracy_array_validation = [i for i in self.accuracy_array_validation if i is not None]
         if self.loss_array_validation and self.accuracy_array_validation:
-            self.learning_metric["VALIDATION_LOSS"] = np.mean(self.loss_array_validation)
+            self.learning_metric["VALIDATION_LOSS"] = self.loss_array_validation[-1]#np.mean(self.loss_array_validation)
             self.learning_metric["LAST_VALIDATION_LOSS"] = self.loss_array_validation[-1]
             self.learning_metric["VALIDATION_ACCURACY"] = np.mean(self.accuracy_array_validation)
         if(self.verbose > 0):
