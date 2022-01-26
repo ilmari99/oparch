@@ -48,24 +48,24 @@ model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
 #(model, loss_lossfun) = opt.opt_loss_fun(model, X, y)
-(model,l) = opt.opt_learning_rate(model, X, y)
-(model, loss_decay) = opt.opt_decay(model, X, y)
-(model, loss_act) = opt.opt_activation(model, len(model.layers)-1, X, y)
+model = opt.opt_learning_rate(model, X, y)
+model = opt.opt_decay(model, X, y)
+model = opt.opt_activation(model, len(model.layers)-1, X, y)
 index = 0
-(model, loss_act) = opt.opt_activation(model, index, X, y)
-(model, loss_units) = opt.opt_dense_units(model, index, X, y)
+model = opt.opt_activation(model, index, X, y)
+model = opt.opt_dense_units(model, index, X, y)
 if model == None:
     index = index - 1
 else:
     index = index + 1
-(model, loss_act) = opt.opt_activation(model, index, X, y)
-(model, loss_units) = opt.opt_dense_units(model, index, X, y)
+model = opt.opt_activation(model, index, X, y)
+model = opt.opt_dense_units(model, index, X, y)
 if model == None:
     index = index - 1
 else:
     index = index + 1
-(model, loss_act) = opt.opt_activation(model, index, X, y)
-(model, loss_units) = opt.opt_dense_units(model, index, X, y)
+model = opt.opt_activation(model, index, X, y)
+model = opt.opt_dense_units(model, index, X, y)
 cb_loss = opt.LossCallback.LossCallback()
 hist = model.fit(
         X, y,
