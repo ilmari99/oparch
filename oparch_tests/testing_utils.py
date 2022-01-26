@@ -1,4 +1,5 @@
 import numpy as np
+import oparch
 
 def y_function(x) -> np.ndarray:
     y = np.zeros(max(np.shape(x))) #Assumes more training samples than features which should be true
@@ -11,6 +12,7 @@ def y_function(x) -> np.ndarray:
     return y
 
 def get_xy(samples=10, features=3,categorical=False,):
+    oparch.__reset_random__()
     X = np.random.rand(samples,features)
     y = y_function(X)
     return X,y

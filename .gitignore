@@ -7,6 +7,7 @@
 .vscode/
 __pycache__
 *.h5
+*.log
 #virtual environment
 .env
 .venv
