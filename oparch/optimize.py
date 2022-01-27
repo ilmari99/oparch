@@ -14,8 +14,8 @@ def opt_learning_rate(model: tf.keras.models.Sequential, X, y,**kwargs) -> (floa
     model = utils.check_compilation(model, X, **kwargs)
     learning_rates = kwargs.pop("learning_rates",_default_learning_rates)
     if not (isinstance(learning_rates, list) or isinstance(learning_rates, np.ndarray)):
-        print("Invalid learning_rates in opt_learning_rate: {learning_rates}. Expected list or numpy array.\n"+
-              "Continuing execution with default learning rates {_default_learning_rates}")
+        print(f"Invalid learning_rates in opt_learning_rate: {learning_rates}. Expected list or numpy array.\n"+
+              f"Continuing execution with default learning rates {_default_learning_rates}")
         learning_rates = _default_learning_rates
         
     return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
@@ -180,14 +180,12 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
             best_configuration["units"] = node_amount
     return_model = kwargs.get("return_model",True)
     if not return_model:
-        print("Best units", best_configuration["units"])
         return results
     if best_configuration == None:
         layer_configs.pop(index)
         model.layers.pop(index)
     else:
         layer_configs[index] = best_configuration
-        print("Best units", best_configuration["units"])
     layers = [layer.__class__.from_config(config) for layer,config in zip(model.layers, layer_configs)]
     new_layers = utils.get_copy_of_layers(layers)
     test_model = tf.keras.models.Sequential(layers)
@@ -207,7 +205,7 @@ def opt_decay(model: tf.keras.models.Sequential,X,y,**kwargs):
     optimizer_type = model.optimizer.__class__
     optimizer_config = model.optimizer.get_config()
     best_decay = optimizer_config["decay"]
-    best_metric = utils.test_learning_speed(model,X,y)
+    best_metric = utils.test_learning_speed(model,X,y,**kwargs)
     results = list(range(len(decays)+2))
     results[0] = ["decay",return_metric]
     results[1] = [best_decay,best_metric]
