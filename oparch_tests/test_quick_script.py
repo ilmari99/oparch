@@ -22,11 +22,11 @@ layers = [tf.keras.layers.Dense(1),tf.keras.layers.Dropout(0.1),tf.keras.layers.
 model = tf.keras.models.Sequential(layers)
 optimizer = tf.keras.optimizers.RMSprop()
 loss=tf.keras.losses.MeanSquaredError()
-(model,_) = oparch.opt_learning_rate(model, X, y,learning_rates=[0.01,0.1],optimizer=optimizer,loss=loss)
-(model,_) = oparch.opt_activation(model, 0, X, y,return_model=True)
-(model,_) = oparch.opt_decay(model, X, y,decays=[0.01,0.02])
-(model,_) = oparch.opt_dense_units(model, 0, X, y,test_nodes=[6,12,1])
-(model,_) = oparch.opt_learning_rate(model, X, y,learning_rates=[0.01,0.1])
+model = oparch.opt_learning_rate(model, X, y,learning_rates=[0.01,0.1],optimizer=optimizer,loss=loss)
+model = oparch.opt_activation(model, 0, X, y,return_model=True)
+model = oparch.opt_decay(model, X, y,decays=[0.01,0.02])
+model = oparch.opt_dense_units(model, 0, X, y,test_nodes=[6,12,1])
+model = oparch.opt_learning_rate(model, X, y,learning_rates=[0.01,0.1])
 cb_loss = oparch.LossCallback.LossCallback(samples=500)
 hist = model.fit(
         X, y,
