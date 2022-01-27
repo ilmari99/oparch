@@ -12,27 +12,25 @@ _default_decays = [0.95, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001, 0]
 def opt_learning_rate(model: tf.keras.models.Sequential, X: np.ndarray, y: np.ndarray,**kwargs) -> tf.keras.models.Sequential or list:
     model = utils.check_compilation(model, X, **kwargs)
     learning_rates = kwargs.pop("learning_rates",_default_learning_rates)
-    if not (isinstance(learning_rates, list) or isinstance(learning_rates, np.ndarray)):
+    if not (isinstance(learning_rates, list)):
         print(f"Invalid learning_rates in opt_learning_rate: {learning_rates}. Expected list or numpy array.\n"+
               f"Continuing execution with default learning rates {_default_learning_rates}")
-        learning_rates = _default_learning_rates
-    return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
+        learning_rates = _default_learning_rates.copy()
     optimizer_config = model.optimizer.get_config()
     optimizer_type = model.optimizer.__class__
     get_optimizer = lambda : optimizer_type.from_config(optimizer_config)
-    results = list(range(len(learning_rates)+2))
-    results[0] = ["learning_rate",return_metric]
-    #Test with current value
-    best_metric = utils.test_learning_speed(model,X,y,**kwargs)
-    best_lr = optimizer_config.get("learning_rate") #prints correctly for example 0.01
-    print(f"Learning rate: {best_lr}, {return_metric}:{best_metric}") #TODO: prints: 0.010000000149011612
-    results[1] = [best_lr,best_metric]
+    learning_rates.append(optimizer_config["learning_rate"])
+    learning_rates = set(learning_rates)
+    learning_rates = sorted(learning_rates)
+    return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
+    results = list(range(len(learning_rates)))
+    best_metric = float("inf")
     for i,lr in enumerate(learning_rates):
         optimizer_config["learning_rate"] = lr
         model.compile(optimizer=get_optimizer(),loss=model.loss)
         metric = utils.test_learning_speed(model,X,y,**kwargs)
         print(f"Learning rate: {lr}, {return_metric}:{metric}")
-        results[i+2] = [lr,metric]
+        results[i] = [lr,metric]
         if(metric<best_metric):
             best_metric = metric
             best_lr = lr
@@ -126,7 +124,7 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
         raise KeyError(f"layer {model.layers[index]} is not a Dense layer.")
     print(f"Optimizing dense units at index {index}")
     test_nodes = kwargs.get("test_nodes",_default_nodes)
-    if not (isinstance(test_nodes, list) or isinstance(test_nodes, np.ndarray)):
+    if not (isinstance(test_nodes, list)):
         print("Invalid learning_rates in opt_dense_units: {test_nodes}. Expected list or numpy array.\n"+
               "Continuing execution with default test_nodes {_default_nodes}")
         test_nodes = _default_nodes.copy()
