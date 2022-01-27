@@ -12,7 +12,6 @@ def y_function(x) -> np.ndarray:
     return y
 
 def get_xy(samples=10, features=3,categorical=False,):
-    oparch.__reset_random__()
     X = np.random.rand(samples,features)
     y = y_function(X)
     return X,y
