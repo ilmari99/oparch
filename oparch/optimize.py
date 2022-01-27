@@ -84,15 +84,15 @@ def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
 def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> dict:
     print(f"Optimizing activation function at index {index}")
     model = utils.check_compilation(model, X, **kwargs)
-    if not isinstance(model.layers[index],tf.keras.layers.Dense):
-        return None
+    if model.layers[index].get_config().get("activation") is None:
+        raise KeyError(f"Layer at index {index} doesn't have an activation function.")
     layers = model.layers
     return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
     results = list(range(len(configurations.ACTIVATION_FUNCTIONS.keys())+2))
     results[0] = ["activation",return_metric]
     index_layer_configuration = layers[index].get_config()
     best_configuration = layers[index].get_config()
-    best_metric = utils.test_learning_speed(model, X, y)
+    best_metric = utils.test_learning_speed(model, X, y,**kwargs)
     optimizer_config = model.optimizer.get_config()
     activation = index_layer_configuration.get("activation")
     print(activation,best_metric)
@@ -111,9 +111,10 @@ def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> 
         results[i+2] = [activation,metric]
         if metric < best_metric:
             best_metric = metric
-            best_configuration = index_layer_configuration
+            best_configuration["activation"] = activation
     return_model = kwargs.get("return_model",True)
     if not return_model:
+        print(f"best activation {best_configuration.get('activation')}")
         return results
     layers[index] = tf.keras.layers.Dense.from_config(best_configuration)
     test_model = tf.keras.models.Sequential(layers)
