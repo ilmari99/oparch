@@ -38,7 +38,9 @@ class Test_opt_dense_units(unittest.TestCase):
         self.build_compile()
         results = oparch.opt_dense_units(self.model, 2, self.X, self.y,return_model=False,batch_size=16)
         print(f"Test act 2:\n {results}")
-        self.assertAlmostEqual(results[1][1], results[3][1])
+        corr = [[1, 0.01448], [2, 0.01755], [4, 0.03776], [8, 0.02701],
+                [16, 0.02578], [32, 0.02059], [64, 0.03791], [128, 0.01847], [None, 0.05649]]
+        self.assertAlmostEqual(results, corr)
         
     def test_opt_dense_units3(self):
         self.build_compile()
@@ -48,13 +50,14 @@ class Test_opt_dense_units(unittest.TestCase):
                                       batch_size=16
                                       )
         print(f"Test act 3:\n {results}")
-        self.assertAlmostEqual(results[1][1], results[3][1])
+        corr = [[1, -0.01734], [2, -0.05649], [4, -0.06604], [8, -0.06982], [16, -0.07228],
+                [32, -0.084], [64, -0.09005], [128, -0.07589], [None, -0.06007]]
+        self.assertAlmostEqual(results, corr)
     
     def test_opt_dense_units4(self):
         self.build_compile()
         model = oparch.opt_dense_units(self.model, 3, self.X, np.exp(self.y),return_metric="nn")
         results = oparch.opt_dense_units(self.model, 3, self.X, np.exp(self.y),return_model=False)
-        results.pop(0)
         best = 1000
         index = 0
         for i,result in enumerate(results):
@@ -74,7 +77,9 @@ class Test_opt_dense_units(unittest.TestCase):
                                            verbose=0,
                                            )
         print(f"Test act 5:\n {results}")
-        self.assertAlmostEqual(results[1][1], results[3][1])
+        corr = [[1, 0.00063], [2, 0.00287], [4, 0.00544], [8, 0.00738],
+                [16, 0.00189], [32, 0.00128], [64, 0.00209], [128, 0.00175], [None, 0.07601]]
+        self.assertAlmostEqual(results, corr)
     
     def test_opt_dense_units6(self):
         self.build_compile()
@@ -89,8 +94,13 @@ class Test_opt_dense_units(unittest.TestCase):
                                            epochs=15,
                                            batch_size=16,
                                            )
+        best = 100000
+        for i,result in enumerate(results):
+            if result[1] < best:
+                best = result[1]
+                index = i
         from_hist = hist.history["loss"][-1]
-        self.assertAlmostEqual(results[1][1], round(from_hist,5))#TODO: Model fit gives slightly different results
+        self.assertAlmostEqual(results[index][1], round(from_hist,5))#TODO: Model fit gives slightly different results
         
     def test_opt_dense_units7(self):
         '''
@@ -119,6 +129,12 @@ class Test_opt_dense_units(unittest.TestCase):
         self.build_compile()
         with self.assertRaises(KeyError):
             oparch.opt_dense_units(self.model, 1, self.X, self.y)
+            
+    def test_opt_dense9(self):
+        self.build_compile()
+        res1 = oparch.opt_dense_units(self.model, 2, self.X, self.y,return_model=False,test_nodes = [5])
+        res2 = oparch.opt_dense_units(self.model, 2, self.X, self.y,return_model=False,test_nodes = [5])
+        self.assertEqual(str(res1), str(res2))
         
     
 if __name__ == "__main__":
