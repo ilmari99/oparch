@@ -11,7 +11,8 @@ from sklearn.model_selection import train_test_split
 from oparch import configurations
 from oparch import LossCallback
 import pandas as pd
-#configurations.configure(TEST_EPOCHS = 10,samples=5000)
+import time
+#configurations.configure(TEST_EPOCHS = 10,samples=5000)TODO
 abalone_train = pd.read_csv(
     "https://storage.googleapis.com/download.tensorflow.org/data/abalone_train.csv",
     names=["Length", "Diameter", "Height", "Whole weight", "Shucked weight",
@@ -22,10 +23,16 @@ X = np.array(abalone_features)
 y = np.array(abalone_labels)
 print(f"Abalone samples: {np.shape(X)}")
 X,X_test,y,y_test = train_test_split(X,y,test_size=0.2)
-layers = [tf.keras.layers.Dense(1),tf.keras.layers.Dense(1),tf.keras.layers.Dense(1),tf.keras.layers.Dense(1)] #A typical structure
+layers = [tf.keras.layers.Dense(16,activation="relu"),
+          tf.keras.layers.Dense(8,activation="relu"),
+          tf.keras.layers.Dense(2,activation="relu"),
+          tf.keras.layers.Dense(1,activation="relu")] #A typical structure
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
+opt.opt_dense_units(model, 2, X, y)
+opt.opt_dense_units2(model, 2, X, y)
+exit()
 cb_loss = opt.LossCallback.LossCallback()
 hist = model.fit(
         X, y,
@@ -43,11 +50,18 @@ y_pred = model.predict(X_test)
 plt.figure()
 plt.plot(range(len(y_pred)),y_pred)
 plt.plot(range(len(y_test)),y_test)
-layers = [tf.keras.layers.Dense(1),tf.keras.layers.Dense(1),tf.keras.layers.Dense(1),tf.keras.layers.Dense(1)]
+#layers = [tf.keras.layers.Dense(16,activation="relu"),
+#          tf.keras.layers.Dense(8,activation="relu"),
+#          tf.keras.layers.Dense(2,activation="relu"),
+#          tf.keras.layers.Dense(1,activation="relu")]
+layers = [tf.keras.layers.Dense(1),
+          tf.keras.layers.Dense(1),
+          tf.keras.layers.Dense(1),
+          tf.keras.layers.Dense(1)]
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
-#(model, loss_lossfun) = opt.opt_loss_fun(model, X, y)
+#No loss optimization for better comparibility
 model = opt.opt_learning_rate(model, X, y)
 model = opt.opt_decay(model, X, y)
 model = opt.opt_activation(model, len(model.layers)-1, X, y)
