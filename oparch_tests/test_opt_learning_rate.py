@@ -100,6 +100,22 @@ class Test_opt_learning_rate(unittest.TestCase):
                                            )
         self.assertEqual(str(results), str(results2))
         
+    def test_opt_learning_rate(self):
+        self.build_compile()
+        model = oparch.opt_learning_rate(self.model, self.X, np.exp(self.y),return_metric="nn")
+        results = oparch.opt_learning_rate(self.model, self.X, np.exp(self.y),return_model=False)
+        results.pop(0)
+        best = 1000
+        index = 0
+        for i,result in enumerate(results):
+            if result[1] < best:
+                best = result[1]
+                index = i
+        print(f"Test act 4:\n {results}")
+        print(results[index][0])
+        print(model.layers[3].get_config().get("units"))
+        self.assertEqual(results[index][0], model.optimizer.get_config().get("learning_rate"))
+        
     
 if __name__ == "__main__":
     unittest.main()
