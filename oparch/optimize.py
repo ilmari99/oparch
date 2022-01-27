@@ -129,6 +129,75 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
     if not (isinstance(test_nodes, list) or isinstance(test_nodes, np.ndarray)):
         print("Invalid learning_rates in opt_dense_units: {test_nodes}. Expected list or numpy array.\n"+
               "Continuing execution with default test_nodes {_default_nodes}")
+        test_nodes = _default_nodes.copy()
+    test_nodes.append(None)
+    test_nodes.append(model.layers[index].get_config().get("units"))
+    test_nodes = set(test_nodes)
+    test_nodes = sorted(test_nodes,key=lambda x : (x is None, x))
+    #return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
+    layer_configs = [layer.get_config() for layer in model.layers]
+    #index_layer_configuration = layer_configs[index]
+    loss = model.loss
+    optimizer_type = model.optimizer.__class__
+    optimizer_config = model.optimizer.get_config()
+    get_optimizer = lambda : optimizer_type.from_config(optimizer_config)
+    results = list(range(len(test_nodes)))
+    best_metric = float("inf")
+    best_configuration = None
+    layers = utils.get_copy_of_layers(model.layers)
+    for i,node_amount in enumerate(test_nodes):
+        if node_amount is None:
+            curr_layer = layers.pop(index)
+            config = layer_configs.pop(index)
+        else:
+            layer_configs[index]["units"] = node_amount
+        
+        layers = utils.layers_from_configs(layers, layer_configs)
+        model = tf.keras.models.Sequential(layers)
+        model.build(np.shape(X))
+        model.compile(
+            optimizer=get_optimizer(),
+            loss=loss
+        )
+        metric = utils.test_learning_speed(model, X, y,**kwargs)
+        print(node_amount, metric)
+        results[i] = [node_amount,metric]
+        if metric<best_metric:
+            best_metric = metric
+            if best_configuration is None and node_amount is not None:
+                best_configuration = layers[index].get_config()
+            elif node_amount is None:
+                best_configuration = None
+            else:
+                best_configuration["units"] = node_amount
+        if node_amount is None:
+            layers.insert(index, curr_layer)
+            layer_configs.insert(index,config)
+    return_model = kwargs.get("return_model",True)
+    if not return_model:
+        return results
+    if best_configuration == None:
+        layer_configs.pop(index)
+        layers.pop(index)
+    else:
+        layer_configs[index] = best_configuration
+    #layers = [layer.__class__.from_config(config) for layer,config in zip(layers, layer_configs)]
+    layers = utils.layers_from_configs(layers, layer_configs)
+    model = tf.keras.models.Sequential(layers)
+    model.build(np.shape(X))
+    model.compile(optimizer=get_optimizer(),
+        loss=loss)
+    return model
+
+def opt_dense_units2(model: tf.keras.models.Sequential, index, X, y, **kwargs):
+    model = utils.check_compilation(model, X, **kwargs)
+    if not isinstance(model.layers[index],tf.keras.layers.Dense):
+        raise KeyError(f"layer {model.layers[index]} is not a Dense layer.")
+    print(f"Optimizing dense units at index {index}")
+    test_nodes = kwargs.get("test_nodes",_default_nodes)
+    if not (isinstance(test_nodes, list) or isinstance(test_nodes, np.ndarray)):
+        print("Invalid learning_rates in opt_dense_units: {test_nodes}. Expected list or numpy array.\n"+
+              "Continuing execution with default test_nodes {_default_nodes}")
         test_nodes = _default_nodes
     return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
     layer_configs = [layer.get_config() for layer in model.layers]
@@ -154,6 +223,7 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
     best_configuration = layers[index].get_config()
     print(node_amount, best_metric)
     results[1] = [node_amount,best_metric]
+    
     #Test with no layer at index
     layers = utils.layers_from_configs(layers, layer_configs)
     curr_layer = layers.pop(index)
