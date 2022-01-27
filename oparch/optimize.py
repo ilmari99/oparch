@@ -125,8 +125,7 @@ def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> 
 
 def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
     if not isinstance(model.layers[index],tf.keras.layers.Dense):
-        print(f"layer {model.layers[index]} is not a Dense layer.")
-        return None
+        raise KeyError(f"layer {model.layers[index]} is not a Dense layer.")
     print(f"Optimizing dense units at index {index}")
     test_nodes = kwargs.get("test_nodes",_default_nodes)
     if not (isinstance(test_nodes, list) or isinstance(test_nodes, np.ndarray)):
@@ -143,8 +142,8 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
     results[0] = ["nodes",return_metric]
     index_layer_configuration = layer_configs[index]
     node_amount = index_layer_configuration.get("units")
-    best_metric = utils.test_learning_speed(model, X, y)
-    best_configuration = layer_configs[index]
+    best_metric = utils.test_learning_speed(model, X, y,**kwargs)
+    best_configuration = layers[index].get_config()#layer_configs[index]
     print(node_amount, best_metric)
     results[1] = [node_amount,best_metric]
     #Test with no layer at index
@@ -155,7 +154,7 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
         optimizer=optimizer_type.from_config(optimizer_config),
         loss=model.loss
     )
-    metric = utils.test_learning_speed(test_model,X,y)
+    metric = utils.test_learning_speed(test_model,X,y,**kwargs)
     print(None, metric)
     results[2] = ["None",metric]
     if metric<best_metric:
@@ -176,15 +175,19 @@ def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
         results[i +3] = [node_amount,metric]
         if metric<best_metric:
             best_metric = metric
-            best_configuration = layers[index].get_config()
+            if best_configuration == None:
+                best_configuration = layers[index].get_config()
+            best_configuration["units"] = node_amount
     return_model = kwargs.get("return_model",True)
     if not return_model:
+        print("Best units", best_configuration["units"])
         return results
     if best_configuration == None:
         layer_configs.pop(index)
         model.layers.pop(index)
     else:
         layer_configs[index] = best_configuration
+        print("Best units", best_configuration["units"])
     layers = [layer.__class__.from_config(config) for layer,config in zip(model.layers, layer_configs)]
     new_layers = utils.get_copy_of_layers(layers)
     test_model = tf.keras.models.Sequential(layers)
