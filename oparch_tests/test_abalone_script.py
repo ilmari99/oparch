@@ -23,16 +23,23 @@ X = np.array(abalone_features)
 y = np.array(abalone_labels)
 print(f"Abalone samples: {np.shape(X)}")
 X,X_test,y,y_test = train_test_split(X,y,test_size=0.2)
-layers = [tf.keras.layers.Dense(16,activation="relu"),
+other_test=False
+if other_test:
+    layers = [tf.keras.layers.Dense(16,activation="relu"),
           tf.keras.layers.Dense(8,activation="relu"),
           tf.keras.layers.Dense(2,activation="relu"),
-          tf.keras.layers.Dense(1,activation="relu")] #A typical structure
+          tf.keras.layers.Dense(1,activation="relu")]
+else:
+    layers = [tf.keras.layers.Dense(1),
+          tf.keras.layers.Dense(1),
+          tf.keras.layers.Dense(1),
+          tf.keras.layers.Dense(1)]
+configs = opt.utils.add_seed_configs(opt.utils.get_layers_config(layers))#To add random seed 42 to each layer
+opt.utils.layers_from_configs(layers, configs)
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
-opt.opt_dense_units(model, 2, X, y)
-opt.opt_dense_units2(model, 2, X, y)
-exit()
+
 cb_loss = opt.LossCallback.LossCallback()
 hist = model.fit(
         X, y,
@@ -50,36 +57,18 @@ y_pred = model.predict(X_test)
 plt.figure()
 plt.plot(range(len(y_pred)),y_pred)
 plt.plot(range(len(y_test)),y_test)
-#layers = [tf.keras.layers.Dense(16,activation="relu"),
-#          tf.keras.layers.Dense(8,activation="relu"),
-#          tf.keras.layers.Dense(2,activation="relu"),
-#          tf.keras.layers.Dense(1,activation="relu")]
-layers = [tf.keras.layers.Dense(1),
-          tf.keras.layers.Dense(1),
-          tf.keras.layers.Dense(1),
-          tf.keras.layers.Dense(1)]
+layers = opt.utils.get_copy_of_layers(layers)
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
-#No loss optimization for better comparibility
 model = opt.opt_learning_rate(model, X, y)
 model = opt.opt_decay(model, X, y)
-model = opt.opt_activation(model, len(model.layers)-1, X, y)
-index = 0
-model = opt.opt_activation(model, index, X, y)
-model = opt.opt_dense_units(model, index, X, y)
-if model == None:
-    index = index - 1
-else:
-    index = index + 1
-model = opt.opt_activation(model, index, X, y)
-model = opt.opt_dense_units(model, index, X, y)
-if model == None:
-    index = index - 1
-else:
-    index = index + 1
-model = opt.opt_activation(model, index, X, y)
-model = opt.opt_dense_units(model, index, X, y)
+model = opt.opt_all_units(model, X, y)
+indices = opt.utils.get_dense_indices(model)
+for i in indices:
+    model = opt.opt_activation(model, i, X, y)
+model = opt.opt_learning_rate(model, X, y)
+model = opt.opt_decay(model, X, y)
 cb_loss = opt.LossCallback.LossCallback()
 hist = model.fit(
         X, y,
