@@ -35,44 +35,47 @@ class Test_opt_decay(unittest.TestCase):
     
     def test_opt_decay2(self):
         self.build_compile()
-        results = oparch.opt_decay(self.model, self.X, self.y,return_model=False)
-        self.assertAlmostEqual(results[1][1], results[11][1])
+        results = oparch.opt_decay(self.model, self.X, self.y,return_model=False, decays=[0.2, 0.4])
+        self.assertNotAlmostEqual(results[0][1], results[2][1])
         
     def test_opt_decay3(self):
         self.build_compile()
-        results = oparch.opt_decay(self.model, self.X, self.y,return_model=False,decays=[0,0.5])
-        self.assertAlmostEqual(results[1][1], results[2][1])
+        results = oparch.opt_decay(self.model, self.X, self.y,return_model=False,decays=[0,0.5,"kissa"])
+        res_li = [result[0] for result in results]
+        print("Lista",res_li)
+        self.assertEqual(oparch.optimize._default_decays, res_li)
+        #self.assertNotAlmostEqual(results[1][0], results[0][0])
     
     def test_opt_decay4(self):
         self.build_compile()
-        results = oparch.opt_decay(self.model, self.X, self.y,return_model=False,decays=np.array([0,0.5]))
-        self.assertAlmostEqual(results[1][1], results[2][1])
+        results = oparch.opt_decay(self.model, self.X, self.y,return_model=False,decays=[0.1,0.5])
+        results2 = oparch.opt_decay(self.model, self.X, self.y,return_model=False,decays=[0.5, 0.1])
+        self.assertAlmostEqual(str(results), str(results))
         
     def test_opt_decay5(self):
         self.build_compile()
         results = oparch.opt_decay(self.model, self.X, self.y,
                                            return_model=False,
-                                           decays=np.array([0,0.5]),
+                                           decays=[0,0.0000001,0.5],
                                            return_metric="RELATIVE_IMPROVEMENT_EPOCH",
                                            verbose=0,
                                            )
-        self.assertAlmostEqual(results[1][1], results[2][1])
+        self.assertAlmostEqual(results[0][1], results[1][1])
     
     def test_opt_decay6(self):
         self.build_compile()
-        oparch.__reset_random__()
         hist = self.model.fit(self.X,self.y,
-                       epochs=5,
+                       epochs=50,
                        batch_size=4,
                        verbose=0,
                        )
         results = oparch.opt_decay(self.model, self.X, self.y,
                                            return_model=False,
                                            decays=[0.1,0.2],
-                                           epochs=5,
+                                           epochs=50,
                                            batch_size=4,
                                            )
-        self.assertAlmostEqual(results[1][1], round(hist.history["loss"][-1],5))#TODO: Model fit gives slightly different results
+        self.assertAlmostEqual(results[0][1], round(hist.history["loss"][-1],5))#TODO: Model fit gives slightly different results
         
     def test_opt_decay7(self):
         self.build_compile()
@@ -80,6 +83,7 @@ class Test_opt_decay(unittest.TestCase):
                                            return_model=False,
                                            epochs=5,
                                            batch_size=4,
+                                           decays=[0,0.2,0.3]
                                            )
         hist = self.model.fit(self.X,self.y,
                        epochs=5,
@@ -90,16 +94,15 @@ class Test_opt_decay(unittest.TestCase):
                                            return_model=False,
                                            epochs=5,
                                            batch_size=4,
+                                           decays=[0,0.2,0.3]
                                            )
         self.assertEqual(str(results), str(results2))
         
     def test_opt_decay8(self):
         self.build_compile()
-        model = oparch.opt_decay(self.model, self.X, np.exp(self.y),return_metric="nn")
-        results = oparch.opt_decay(self.model, self.X, np.exp(self.y),return_model=False)
-        results.pop(0)
+        model = oparch.opt_decay(self.model, self.X, np.exp(self.y),return_metric="nn",decays=[0.2,0.4,0.01])
+        results = oparch.opt_decay(self.model, self.X, np.exp(self.y),return_model=False,decays=[0.2,0.4,0.01])
         best = 1000
-        index = 0
         for i,result in enumerate(results):
             if result[1] < best:
                 best = result[1]
