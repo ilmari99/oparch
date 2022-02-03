@@ -46,27 +46,25 @@ hist = model.fit(
         epochs=10,
         verbose=1,
         validation_data=(X_test,y_test),
-        batch_size=configurations.BATCH_SIZE,
+        batch_size=64,
         callbacks=[cb_loss],
         shuffle=True,
         use_multiprocessing=True,
 )
-cb_loss.plot_loss()
 opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
 y_pred = model.predict(X_test)
 plt.figure()
 plt.plot(range(len(y_pred)),y_pred)
 plt.plot(range(len(y_test)),y_test)
+cb_loss.plot_loss()
 layers = opt.utils.get_copy_of_layers(layers)
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
-model = opt.opt_learning_rate(model, X, y)
-model = opt.opt_decay(model, X, y)
+configurations.configure(samples=3000,epochs=1,batch_size=64,learning_metric="LAST_LOSS")
+#model = opt.opt_loss_fun(model, X, y) #The best seems to be logarithmic, so don't do this for better comparison
 model = opt.opt_all_units(model, X, y)
-indices = opt.utils.get_dense_indices(model)
-for i in indices:
-    model = opt.opt_activation(model, i, X, y)
+model = opt.opt_all_activations(model, X, y)
 model = opt.opt_learning_rate(model, X, y)
 model = opt.opt_decay(model, X, y)
 cb_loss = opt.LossCallback.LossCallback()
@@ -75,12 +73,12 @@ hist = model.fit(
         epochs=10,
         verbose=1,
         validation_data=(X_test,y_test),
-        batch_size=configurations.BATCH_SIZE,
+        batch_size=64,
         callbacks=[cb_loss],
         shuffle=True,
         use_multiprocessing=True,
 )
-cb_loss.plot_loss()
+cb_loss.plot_loss(new_figure=False)
 opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
 y_pred = model.predict(X_test)
 plt.figure()
