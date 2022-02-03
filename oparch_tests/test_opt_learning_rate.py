@@ -36,36 +36,61 @@ class Test_opt_learning_rate(unittest.TestCase):
     
     def test_opt_learning_rate2(self):
         self.build_compile()
-        results = oparch.opt_learning_rate(self.model, self.X, self.y,return_model=False)
-        self.assertAlmostEqual(results[1][1], results[6][1])
+        results1 = oparch.opt_learning_rate(self.model,self.X, self.y,
+                                           return_model=False,
+                                           epochs = 12,
+                                           batch_size = 70,
+                                           samples = 200,
+                                           )
+        results2 = oparch.opt_learning_rate(self.model,self.X, self.y,
+                                           return_model=False,
+                                           epochs = 12,
+                                           batch_size = 70,
+                                           samples = 50,
+                                           )
+        self.assertNotEqual(str(results1), str(results2))
         
     def test_opt_learning_rate3(self):
         self.build_compile()
-        results = oparch.opt_learning_rate(self.model, self.X, self.y,return_model=False,learning_rates=[0.01,0.5])
-        self.assertAlmostEqual(results[1][1], results[2][1])
+        results = oparch.opt_learning_rate(self.model, self.X, self.y,
+                                           return_model=False,
+                                           learning_rates=[0.03,0.5])
+        tested = [lr[0] for lr in results]
+        self.assertTrue(0.01 in tested)
     
     def test_opt_learning_rate4(self):
         self.build_compile()
-        results = oparch.opt_learning_rate(self.model, self.X, self.y,return_model=False,learning_rates=np.array([0.01,0.5]))
-        self.assertAlmostEqual(results[1][1], results[2][1])
+        results1 = oparch.opt_learning_rate(self.model,self.X, self.y,
+                                           return_model=False,
+                                           epochs = 12,
+                                           batch_size = 70,
+                                           samples = 200,
+                                           optimizer=tf.keras.optimizers.Adam(),
+                                           )
+        results2 = oparch.opt_learning_rate(self.model,self.X, self.y,
+                                           return_model=False,
+                                           epochs = 12,
+                                           batch_size = 70,
+                                           samples = 200,
+                                           )
+        self.assertNotEqual(str(results1), str(results2))
         
     def test_opt_learning_rate5(self):
         self.build_compile()
         results = oparch.opt_learning_rate(self.model, self.X, self.y,
                                            return_model=False,
-                                           learning_rates=np.array([0.01,0.5]),
+                                           learning_rates=[0.01,0.5],
                                            return_metric="RELATIVE_IMPROVEMENT_EPOCH",
                                            verbose=0,
                                            )
-        self.assertAlmostEqual(results[1][1], results[2][1])
+        corr = "[[0.01, -0.18671], [0.5, 1.81569]]"
+        self.assertAlmostEqual(str(results), corr)
     
     def test_opt_learning_rate6(self):
         self.build_compile()
-        oparch.__reset_random__()
         hist = self.model.fit(self.X,self.y,
                        epochs=5,
                        batch_size=4,
-                       verbose=0,
                        )
         results = oparch.opt_learning_rate(self.model, self.X, self.y,
                                            return_model=False,
@@ -73,7 +98,12 @@ class Test_opt_learning_rate(unittest.TestCase):
                                            epochs=5,
                                            batch_size=4,
                                            )
-        self.assertAlmostEqual(results[1][1], round(hist.history["loss"][-1],5))#TODO: Model fit gives slightly different results
+        best = 1000
+        for i,result in enumerate(results):
+            if result[1] < best:
+                best = result[1]
+                index = i
+        self.assertAlmostEqual(results[index][1], round(hist.history["loss"][-1],5))#TODO: Model fit gives slightly different results
         
     def test_opt_learning_rate7(self):
         '''
@@ -88,7 +118,7 @@ class Test_opt_learning_rate(unittest.TestCase):
                                            batch_size=4,
                                            )
         hist = self.model.fit(self.X,self.y,
-                       epochs=5,
+                       epochs=2,
                        batch_size=4,
                        verbose=0,
                        )
@@ -99,6 +129,17 @@ class Test_opt_learning_rate(unittest.TestCase):
                                            batch_size=4,
                                            )
         self.assertEqual(str(results), str(results2))
+        
+    def test_opt_learning_rate8(self):
+        self.build_compile()
+        model = oparch.opt_learning_rate(self.model, self.X, np.exp(self.y),return_metric="nn")
+        results = oparch.opt_learning_rate(self.model, self.X, np.exp(self.y),return_model=False)
+        best = 1000
+        for i,result in enumerate(results):
+            if result[1] < best:
+                best = result[1]
+                index = i
+        self.assertEqual(results[index][0], model.optimizer.get_config().get("learning_rate"))
         
     
 if __name__ == "__main__":

@@ -10,7 +10,9 @@ import oparch
 _layer_keys = {
     "dense":["units","activation"],
     "dropout":["rate"],
-    "conv2d":["filters,kernel_size","activation"]
+    "conv2d":["filters","kernel_size","activation"],
+    "max_pooling2d":["pool_size"],
+    "flatten":["dtype"],
 }
 
 def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
@@ -41,7 +43,15 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
     epochs = kwargs.get("epochs",configurations.TEST_EPOCHS)
     batch_size = kwargs.get("batch_size",configurations.BATCH_SIZE)
-    verbose = kwargs.get("verbose",0)
+    verbose = kwargs.get("verbose",configurations.VERBOSE)
+    metrics = kwargs.get("metrics",[])
+    #print("Test learning speed kwargs",kwargs)
+    #print("epochs",epochs)
+    #print("samples",samples)
+    #print("validation_split",validation_split)
+    #print("batch_size",batch_size)
+    #print("return_metric",return_metric)
+    #print("\n\n")
     if not isinstance(samples,int) or samples > np.size(X,axis=0) or samples <= 0:
         samples = np.size(X,axis=0)
         #print(f"Incorrect sample size. Using {samples} samples.")
@@ -54,16 +64,18 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     if not isinstance(batch_size, int) or batch_size<1 or (batch_size>samples and samples > 0):
         batch_size = configurations.BATCH_SIZE
         #print(f"Incorrect batch_size. Using {batch_size} batch_size.")
+    if "accuracy" not in metrics:
+        metrics.append("accuracy")
     try:
         model.optimizer.get_weights()
     except AttributeError:
         raise AttributeError("The model must be built but not used before testing the learning speed")
+    optimizer_type = model.optimizer.__class__
+    optimizer_config = model.optimizer.get_config()
+    loss = model.loss
     #rebuild and compile the model to get a clean optimizer
     if model.optimizer.get_weights(): #If list is not empty TODO: If model is trained and then compiled with empty optimizer, incorrect results
         layers = get_copy_of_layers(model.layers)
-        optimizer_type = model.optimizer.__class__
-        optimizer_config = model.optimizer.get_config()
-        loss = model.loss
         model = tf.keras.models.Sequential(layers)
         model.build(np.shape(X))
         model.compile(optimizer=optimizer_type.from_config(optimizer_config),
@@ -72,6 +84,8 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     #Save the models weights to return the model to its original state after testing the learning speed
     model.save_weights("test_weights.h5")
     validation_data = None
+    model.compile(optimizer=optimizer_type.from_config(optimizer_config),
+                  loss=loss,metrics=metrics)
     if samples>0:
         sample_indexes = random.sample(range(np.size(X,axis=0)),samples,)
         X = X[sample_indexes]
@@ -79,9 +93,7 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     if("VALIDATION" in return_metric): #If the learning metric should be calculated from validation set
         X, x_test, y, y_test = train_test_split(X, y,test_size=validation_split, random_state=42)
         validation_data = (x_test,y_test)
-    cb_loss = lcb.LossCallback(samples=samples,
-                               epochs=epochs,
-                               batch_size=batch_size,
+    cb_loss = lcb.LossCallback(
                                verbose=verbose,
                                )
     oparch.__reset_random__()
@@ -102,11 +114,11 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     model.compile(optimizer=model.optimizer.__class__.from_config(model.optimizer.get_config()),
                   loss=model.loss)
     #if only one epoch is done, returns the last loss
-    return_value = round(cb_loss.learning_metric.get(return_metric,np.nan),5)
-    if return_value == None or return_value == np.nan:
+    return_value = cb_loss.learning_metric.get(return_metric)
+    if return_value == None or np.isnan(return_value):
         print(f"Return metric {return_metric} is None. Using LAST_LOSS instead.")
-        return cb_loss.learning_metric["LAST_LOSS"]
-    return return_value
+        return round(cb_loss.learning_metric.get("LAST_LOSS"),5) #Will error if LAST_LOSS == None
+    return round(return_value,5)
 
 def layers_from_configs(layers,configs):
     configs = add_seed_configs(configs)
@@ -133,7 +145,7 @@ def check_compilation(model: tf.keras.models.Sequential, X, **kwargs) -> tf.kera
         loss = kwargs.get("loss",model.loss)
         model = tf.keras.models.Sequential(layers)
         model.build(np.shape(X))
-        model.compile(optimizer=optimizer, loss=loss)
+        model.compile(optimizer=optimizer, loss=loss,metrics=["accuracy"])
     return model
 
 def get_layers_config(layers: list)->list:
@@ -179,14 +191,14 @@ def create_dict(model: tf.keras.models.Sequential,learning_metrics={}) -> dict:
 
 def _string_format_model_dict(dic: dict):
     string = f"\nOptimizer: {dic.get('optimizer')}\n"
-    string = string + f"Loss function: {type(dic.get('loss_function')).__name__}\n"
+    string = string + f"Loss function: {dic.get('loss_function')}\n"
     string = string + f"Learning metrics: {dic.get('learning_metrics')}\n"
     #string = string + f"{'LAYER':<12}{'ACTIVATION':<12}{'UNITS'}\n"
     for layer in dic["layers"]: #Here variable layer is the name of the layer
-        string = string + f"{layer:<12}"
-        keys = dic["layers"][layer].keys()
+        string = string + f"{layer:<16}"
+        keys = list(dic["layers"][layer].keys())
         for key in keys:
-            string = string + f"{key:<12}:{dic['layers'][layer][key]:<12}"
+            string = string + f"{key:<16}:{str(dic['layers'][layer][key]):<16}"
         string = string + "\n"
     return string
 
@@ -228,9 +240,7 @@ def add_seed_configs(configs):
         elif "kernel_initializer" in keys and "config" in config["kernel_initializer"].keys():
             config["kernel_initializer"]["config"]["seed"] = 42
         else:
-            print(f"No seed key found for layer {config.get('name')}")
-            
-            
+            pass#print(f"No seed key found for layer {config.get('name')}")
     return configs
 
 def get_dense_indices(model: tf.keras.models.Sequential) -> list:
@@ -239,3 +249,11 @@ def get_dense_indices(model: tf.keras.models.Sequential) -> list:
         if (isinstance(layer, tf.keras.layers.Dense)):
             dense_indices.append(i)
     return dense_indices
+
+def get_activation_indices(model: tf.keras.models.Sequential) -> list:
+    indices = []
+    for i,layer in enumerate(model.layers):
+        config = layer.get_config()
+        if config.get("activation") is not None:
+            indices.append(i)
+    return indices
