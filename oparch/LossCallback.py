@@ -16,9 +16,8 @@ _learning_metrics = {
 
 class LossCallback(tf.keras.callbacks.Callback):
     
-    
     def __init__(self, **kwargs):
-        super().__init__()
+        self.early_stopping = kwargs.get("early_stopping",True)
         self.learning_metric = _learning_metrics.copy()
         self.verbose = kwargs.get("verbose",configurations.VERBOSE)
         self.epoch_start = 0
@@ -40,12 +39,14 @@ class LossCallback(tf.keras.callbacks.Callback):
         if self.verbose > 0:
             print(f"ITEMS:{self.learning_metric.items()}")
             if(self.verbose >= 2):
-                self.plot_loss()
-                plt.show()
+                self.plot_loss(show=True)
 
     def on_train_batch_end(self, batch, logs=None):
         self.loss_array_batch.append(logs.get("loss"))
-            
+        if self.early_stopping and batch % 5 == 0:
+            self.try_early_stop()
+        
+        
     def on_epoch_begin(self, epoch, logs=None):
         self.epoch_start = time.time()
 
@@ -67,7 +68,7 @@ class LossCallback(tf.keras.callbacks.Callback):
         plt.ylabel("Loss on batch")
         if show:
             plt.show()
-    @classmethod
+
     def relative_diff_list(cls,arr):
         #Compare the differences in array to the previous value
         if len(arr)>1 and not None in arr:
@@ -76,10 +77,9 @@ class LossCallback(tf.keras.callbacks.Callback):
             return None
         return diff_arr
     
-    @classmethod
-    def check_empty_or_None(cls,array):
-        if array and not None in array:
-            return array
-        else:
-            return None
+    def try_early_stop(self):
+        k = self.relative_diff_list(self.loss_array_batch)
+        if k is not None and k > 0.01:
+            print(f"\nModel is not descending k>0.01  (k= {k}). Stopping training.")
+            self.model.stop_training = True
         
