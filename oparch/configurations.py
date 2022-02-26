@@ -1,24 +1,33 @@
 import tensorflow as tf
-IMAGE_SIZE = (180,180)
-BATCH_SIZE = 32
-LEARNING_METRIC = "LAST_LOSS" #LAST_LOSS or RELATIVE_IMPROVEMENT_EPOCH seems to work best
-TEST_EPOCHS = 5
-TEST_SAMPLES = 5000
-VERBOSE = 0
-VALIDATION_SPLIT = 0.2
+import warnings
+import numpy as np
 
-def configure(**kwargs):
-    allowed_kwargs = {"image_size","batch_size","learning_metric","epochs","samples","verbose","validation_split"}
-    global IMAGE_SIZE,BATCH_SIZE,LEARNING_METRIC,TEST_EPOCHS,TEST_SAMPLES,VERBOSE,VALIDATION_SPLIT
-    IMAGE_SIZE = kwargs.get("image_size",IMAGE_SIZE)
-    BATCH_SIZE = kwargs.get("batch_size",BATCH_SIZE)
-    LEARNING_METRIC = kwargs.get("learning_metric",LEARNING_METRIC)
-    TEST_EPOCHS = kwargs.get("epochs",TEST_EPOCHS)
-    TEST_SAMPLES = kwargs.get("samples", TEST_SAMPLES)
-    VERBOSE = kwargs.get("verbose",VERBOSE)
-    VALIDATION_SPLIT = kwargs.get("validation_split",VALIDATION_SPLIT)
-    
-    
+default_misc = {
+    "image_size":(180,180), #Default image_size
+    "batch_size": 32, #default batch_size
+    "learning_metric":"LAST_LOSS", #The metric to minimize when optimizing parameters
+    "epochs": 5, # Default number of epochs to run when testing learning speed
+    "samples": float("inf"), #How many samples to train on when testing learning speed
+    "verbose" : 0, #verbose
+    "validation_split" : 0.2, #
+    "decimals" : 5, #Decimal points to round to 
+}
+default_intervals = {
+    #"learning_rate":[0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1],
+    #"decay":[0.95, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001, 0],
+    "amsgrad":[True,False],
+    #"momentum":[0.95, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001, 0],
+    "learning_rate":[0.00001, 0.001,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9],
+    "decay":[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+    "momentum":[0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1],
+    "units":[None,1,2,4,8,16,32,64,128,256,512],
+    "filters":[None,1,2,4,8,16,32,64,128,256,512],
+    "strides":[None,(1,1),(2,1),(2,2),(3,1),(3,2),(3,3),(4,1),(4,2),(4,3),(4,4),(5,1),(5,2),(5,3),(5,4),(5,5)],
+    "kernel_size":[(2,1),(2,2),(3,1),(3,2),(3,3),(4,1),(4,2),(4,3),(4,4),(5,1),(5,2),(5,3),(5,4),(5,5)],
+    "pool_size":[(2,1),(2,2),(3,1),(3,2),(3,3),(4,1),(4,2),(4,3),(4,4),(5,1),(5,2),(5,3),(5,4),(5,5)],
+    "activation":["relu","sigmoid","linear","tanh","exponential","elu","softmax",],
+    "rho":list(np.linspace(0.8,1,10,endpoint=True)),
+}    
 
 ACTIVATION_FUNCTIONS = {
     "sigmoid":tf.keras.activations.sigmoid,
@@ -65,3 +74,34 @@ OPTIMIZERS = {
 BINARY_LOSSES = {
     "binary_crossentropy":tf.keras.losses.BinaryCrossentropy,
 }
+
+    
+def set_default_misc(**kwargs):
+    global default_misc
+    for item in kwargs.items():
+        if item[0] not in default_misc:
+            print(f"Item {item[0]} not found.")
+            continue
+        print(f"Changing {item[0]} default value from {default_misc[item[0]]} to {item[1]}")
+        default_misc[item[0]] = item[1]
+        
+def set_default_intervals(**kwargs):
+    global default_intervals
+    for item in kwargs.items():
+        if item[0] not in default_intervals.keys():
+            print(f"Adding {item[0]} to default values")
+        else:
+            print(f"Changing {item[0]} default value from {default_intervals[item[0]]} to {item[1]}")
+        default_intervals[item[0]] = item[1]
+
+def get_default_interval(param=None):
+    global default_intervals
+    if param == None:
+        return default_intervals.copy()
+    return default_intervals[param].copy()
+
+def get_default_misc(param=None):
+    global default_misc
+    if param == None:
+        return default_intervals.copy()
+    return default_misc[param]

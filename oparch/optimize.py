@@ -1,68 +1,234 @@
 import numpy as np
 import tensorflow as tf
+import warnings
 from . import optimize_utils as utils
 from . import LossCallback as lcb
 from . import configurations
 import oparch
-_default_learning_rates = [0.0001, 0.0005, 0.001, 0.005, 0.01, 0.05, 0.1, 0.5, 1]#[1, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001]
-_default_nodes = [2**i for i in range(0,8)] #Node amounts to test
-_default_decays = sorted([0.95, 0.5, 0.1, 0.05, 0.01, 0.005, 0.001, 0.0005, 0.0001, 0])
+import bisect
 
-def opt_all_units(model,X,y,**kwargs):
-    indices = oparch.utils.get_dense_indices(model)
-    if indices[-1] == len(model.layers)-1:
-        indices.pop(-1)
+def opt_all_layer_params(model,X,y,param,**kwargs):
+    """Loops over all layers and optimizes the given parameter if the layer has that parameter attribute.
+
+    Args:
+        model (Sequential): The model which layers are looped through
+        X (feature data): a numpy array
+        y (observed output): a numpy arra
+        param (string): a string identifier
+
+    Returns:
+        _type_: _description_
+    """
+    kwargs["all"] = True
+    layers = model.layers.copy()
+    layers.pop(-1)
     orig_layers = len(model.layers)
     removed = 0
-    for i in indices:
-        model = opt_dense_units(model, i+removed, X, y,**kwargs)
+    for i,layer in enumerate(layers):
+        model = opt_layer_parameter(model, X, y, i+removed, param,**kwargs)
         removed = len(model.layers) - orig_layers
     return model
 
-def opt_all_activations(model,X,y,**kwargs):
-    indices = utils.get_activation_indices(model)
-    for i in indices:
-        model = opt_activation(model, i, X, y,**kwargs)
-    return model
+def opt_optimizer_parameter(model: tf.keras.models.Sequential, X: np.ndarray, y: np.ndarray,param: str,**kwargs) -> tf.keras.models.Sequential or list:
+    """
+    Optimizes an optimizer parameter such as learning_rate, decay or whatever. Uses enhancing to find the best parameter.
+    Only finds the first minima. If learning_metric has a local minima, narrows the search and starts again.
+    Stops when the locally optimal parameter is found at either the parameter bounds or at the first local minima.
+    
+    Returns the model compiled with the optimized parameter.
+    If there is a small fault in the call, returns the unchanged model.
+    
+    Args:
+        model (tf.keras.models.Sequential): Sequential model, compiled or with loss function and optimizer as kwargs
+        X (np.ndarray): numpy array
+        y (np.ndarray): numpy array
+        param (str): string identifier of the parameter, for ex "learning_rate"
 
-def opt_learning_rate(model: tf.keras.models.Sequential, X: np.ndarray, y: np.ndarray,**kwargs) -> tf.keras.models.Sequential or list:
+    Returns:
+        tf.keras.models.Sequential or list: _description_
+    """    
+    oparch.__reset_random__()
+    utils.check_types((model,tf.keras.models.Sequential),
+                   (X,np.ndarray),
+                   (y,np.ndarray),
+                   (param,str)
+                   )
+    # Checks that the model can be compiled and hasn't been trained before
     model = utils.check_compilation(model, X, **kwargs)
-    learning_rates = kwargs.pop("learning_rates",_default_learning_rates)
-    if not (isinstance(learning_rates, list)):
-        print(f"Invalid learning_rates in opt_learning_rate: {learning_rates}. Expected list or numpy array.\n"+
-              f"Continuing execution with default learning rates {_default_learning_rates}")
-        learning_rates = _default_learning_rates.copy()
+    print(f"Optimizing '{param}' for {model.optimizer}...")
+    if not hasattr(model.optimizer,param):
+        warnings.warn(f"{model.optimizer} doesn't have '{param}' attribute.")
+        #print(f"{model.optimizer} doesn't have '{param}' attribute.")
+        return model
+    return_metric = kwargs.get("return_metric",configurations.get_default_misc("learning_metric"))
+    if "RELATIVE" in return_metric:
+        epochs = kwargs.get("epochs", configurations.get_default_misc("epochs"))
+        if epochs < 2:
+            kwargs["epochs"] = 2
+    vals = kwargs.get(param,configurations.get_default_interval(param))
+    if vals is None:
+        warnings.warn(f"Parameter '{param}' doesn't have default values and none were specified.",
+              "Specify the testable values with adding an argument with the values to be tested.",
+              f"For example: opt_layer(....., {param}=[0.1,0.01,0.005])")
+        #print(f"Parameter '{param}' doesn't have default values and none were specified.",
+        #      "Specify the testable values with adding an argument with the values to be tested.",
+        #      f"For example: opt_layer(....., {param}=[0.1,0.01,0.005])")
+        return model
     optimizer_config = model.optimizer.get_config()
     optimizer_type = model.optimizer.__class__
     get_optimizer = lambda : optimizer_type.from_config(optimizer_config)
-    learning_rates.append(optimizer_config.get("learning_rate"))
-    #learning_rates = [round(lr,7) for lr in learning_rates]
-    #print(learning_rates)TODO
-    learning_rates = set(learning_rates)
-    learning_rates = sorted(learning_rates)
-    return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
-    results = list(range(len(learning_rates)))
-    best_metric = float("inf")
-    for i,lr in enumerate(learning_rates):
-        optimizer_config["learning_rate"] = lr
+    curr_param = optimizer_config.get(param)
+    decimals = kwargs.get("decimals",configurations.get_default_misc("decimals"))
+    #if curr_param not in vals:#curr_param not in vals:
+    #    vals.append(curr_param)
+    vals = set(vals)
+    vals = sorted(vals)
+    results = []
+    i = 0
+    while vals:
+        val = vals.pop(0)
+        optimizer_config[param] = val
         model.compile(optimizer=get_optimizer(),loss=model.loss)
         metric = utils.test_learning_speed(model,X,y,**kwargs)
-        print(f"Learning rate: {optimizer_config['learning_rate']}, {return_metric}:{metric}")
-        results[i] = [lr,metric]
-        if(metric<best_metric):
-            best_metric = metric
-            best_lr = lr
+        print(f"{param:<16}{val:<16}{return_metric:<16}{metric:<16}")
+        bisect.insort(results,(round(val,decimals),round(metric,decimals)),key=lambda x: x[0] if x[0] is not None else -float("inf"))
+        #results.append((round(val,decimals),round(metric,decimals)))
+        i = i + 1
+        new_vals = utils.grid_search(results,**kwargs)
+        if new_vals:
+            vals = new_vals
+        #if not vals or (i > 4 and results[-1][1] - results[-4][1] == 0):
+            #break
+    utils.plot_results(results)
+    return_model = kwargs.get("return_model",True)
+    if return_model:
+        best = min(results,key=lambda x : x[1])
+        optimizer_config[param] = best[0]
+        model.compile(optimizer=get_optimizer(),loss=model.loss)
+        print("results:",results)
+        return model
+    else:
+        return results
+    
+def opt_layer_parameter(model,X,y,index,param,**kwargs):
+    """
+    Optimizes a layer parameter such as pool_size, units.
+    
+    Returns the compiled model with the optimized parameter implemented in the layer.
+    If there is a small fault in the call, returns the unchanged model.
+    
+    Args:
+        model (tf.keras.models.Sequential): Sequential model, compiled or with loss function and optimizer as kwargs
+        X (np.ndarray): numpy array
+        y (np.ndarray): numpy array
+        index (int): the index of the layer to optimize
+        param (str): string identifier of the parameter, for ex "learning_rate"
+
+    Returns:
+        tf.keras.models.Sequential or list: _description_
+    """
+    oparch.__reset_random__()
+    utils.check_types((model,tf.keras.models.Sequential),
+                   (X,np.ndarray),
+                   (y,np.ndarray),
+                   (param,str)
+                   )
+    model = utils.check_compilation(model, X, **kwargs)
+    if index > len(model.layers)-1:
+        warnings.warn(f"Index {index} is out of range. Model has {len(model.layers)} layers")
+        return model
+    if not hasattr(model.layers[index], param):
+        if not kwargs.get("all",False):
+            warnings.warn(f"{model.layers[index]} at index {index} doesn't have '{param}' attribute.")
+        return model
+    print(f"Optimizing '{param}' for {model.layers[index]} at index {index}...")
+    vals = kwargs.get(param,configurations.get_default_interval(param))
+    if vals is None:
+        warnings.warn(f"Parameter '{param}' doesn't have default values and none were specified.",
+              "Specify the testable values with adding an argument with the values to be tested.",
+              f"For example: opt_layer(....., {param}=[(2,2),(3,3),(2,3)])")
+        return model
+    if param == "activation" and index == len(model.layers)-1:
+        if not model.loss.get_config().get("from_logits",True):
+            vals = ["softmax","sigmoid"]          
+    return_metric = kwargs.get("return_metric",configurations.get_default_misc("learning_metric"))
+    if "RELATIVE" in return_metric:
+        epochs = kwargs.get("epochs", configurations.get_default_misc("epochs"))
+        if epochs < 2:
+            kwargs["epochs"] = 2
+    optimizer_config = model.optimizer.get_config()
+    optimizer_type = model.optimizer.__class__
+    get_optimizer = lambda : optimizer_type.from_config(optimizer_config)
+    copy_of_layers = utils.get_copy_of_layers(model.layers)
+    layer_configs = utils.get_layers_config(copy_of_layers)
+    curr_param = layer_configs[index].get(param)
+    loss = model.loss
+    if curr_param not in vals:
+        bisect.insort(vals,curr_param)
+        #vals.append(curr_param)
+    loss = model.loss
+    results = []
+    i = 0
+    while vals:
+        oparch.__reset_random__()
+        val = vals.pop(0)
+        if val is None:
+            curr_layer = copy_of_layers.pop(index)
+            curr_config = layer_configs.pop(index)
+        else:
+            layer_configs[index][param] = val
+        copy_of_layers = utils.layers_from_configs(copy_of_layers, layer_configs)
+        model = tf.keras.models.Sequential(copy_of_layers)
+        try:
+            model.build(np.shape(X))
+            model.compile(
+            optimizer=get_optimizer(),
+            loss=loss
+            )
+            metric = utils.test_learning_speed(model, X, y,**kwargs)
+        except ValueError:
+            metric = float("inf")
+        print(f"{param:<16}{str(val):<16}{return_metric:<16}{str(metric):<16}")
+        try:
+            bisect.insort(results,(val,metric),key=lambda x: x[0] if x[0] is not None else -float("inf"))
+        except TypeError:
+            results.append((val,metric))
+        #results.append((val,metric))
+        if val is None:
+            copy_of_layers.insert(index,curr_layer)
+            layer_configs.insert(index,curr_config)
+        i = i + 1
+        if not vals:
+            vals = utils.grid_search(results)
+        
     return_model = kwargs.get("return_model",True)
     if not return_model:
         return results
-    optimizer_config["learning_rate"] = best_lr
-    model.compile(optimizer=get_optimizer(),loss=model.loss)
-    return model
+    else:
+        best = min(results,key=lambda x : x[1])
+        if best[0] is None:
+            print(f"Removing {copy_of_layers[index]}...")
+            copy_of_layers.pop(index)
+            layer_configs.pop(index)
+        else:
+            layer_configs[index][param] = best[0]
+        copy_of_layers = utils.layers_from_configs(copy_of_layers, layer_configs)
+        model = tf.keras.models.Sequential(copy_of_layers)
+        model.build(np.shape(X))
+        model.compile(
+            optimizer=get_optimizer(),
+            loss=loss
+        )
+        return model
 
 def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
+    """
+    Optimizes the loss function by minizing the slope.
+    WARNING: Might not work correctly, because incentivizes the loss to start as very large.
+    """
     model = utils.check_compilation(model, X, **kwargs)
     return_metric = kwargs.get("return_metric")
-    epochs = kwargs.get("epochs",configurations.TEST_EPOCHS)
+    epochs = kwargs.get("epochs",configurations.get_default_misc("epochs"))
     if return_metric == "RELATIVE_IMPROVEMENT_EPOCH" or return_metric is None:
         kwargs["return_metric"] = "RELATIVE_IMPROVEMENT_EPOCH"
         return_metric = "RELATIVE_IMPROVEMENT_EPOCH"
@@ -76,7 +242,6 @@ def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
     loss_functions.append(model.loss)
     results = list(range(len(loss_functions)))
     best_metric = float("inf")
-    #test with current loss function
     best_loss_fun = model.loss.__class__
     for i, loss_fun in enumerate(loss_functions):
         model.compile(optimizer=model.optimizer, loss=loss_fun)
@@ -93,159 +258,4 @@ def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
     if not return_model:
         return results
     model.compile(optimizer=model.optimizer,loss=best_loss_fun)
-    return model
-
-def opt_activation(model: tf.keras.models.Sequential, index, X, y, **kwargs) -> dict:
-    model = utils.check_compilation(model, X, **kwargs)
-    if index > len(model.layers)-1:
-        raise IndexError()
-    if model.layers[index].get_config().get("activation") is None:
-        raise KeyError(f"Layer at index {index} doesn't have an activation function.")
-    return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
-    optimizer_config = model.optimizer.get_config()
-    optimizer_type = model.optimizer.__class__
-    loss = model.loss
-    get_optimizer = lambda : optimizer_type.from_config(optimizer_config)
-    layers = model.layers
-    best_activation = layers[index].activation
-    layer_type = model.layers[index].__class__
-    loss_dict = loss.get_config()
-    if (index == len(layers)-1) and not (loss_dict.get("from_logits",True)):
-        kwargs["return_metric"] = "NEG_ACCURACY"
-        activation_functions = list(configurations.PROBABILITY_DISTRIBUTION_ACTIVATION_FUNCTIONS.items())
-    else:
-        activation_functions = list(configurations.ACTIVATION_FUNCTIONS.items())
-    current_name = tf.keras.activations.serialize(layers[index].activation)
-    if not any([act[0] is current_name for act in activation_functions]):
-        activation_functions.append((current_name,layers[index].activation))
-    results = list(range(len(activation_functions)))
-    best_metric = float("inf")
-    for i, activation in enumerate(activation_functions):
-        #index_layer_configuration["activation"] = activation
-        #layers[index] = layer_type.from_config(index_layer_configuration)
-        name = activation[0]
-        fun = activation[1]
-        layers[index].activation = fun
-        model = tf.keras.models.Sequential(layers)
-        model.build(np.shape(X))
-        model.compile(optimizer=get_optimizer(), loss=loss)
-        metric = utils.test_learning_speed(model, X, y,**kwargs)
-        results[i] = [name,metric]
-        print(name,metric)
-        if metric < best_metric:
-            best_metric = metric
-            best_activation = activation
-    return_model = kwargs.get("return_model",True)
-    if not return_model:
-        print(f"best activation {best_activation[0]}")
-        return results
-    #layers[index] = layer_type.from_config(best_configuration)
-    layers[index].activation = best_activation[1]
-    model = tf.keras.models.Sequential(layers)
-    model.build(np.shape(X))
-    model.compile(optimizer=get_optimizer(),
-                  loss=loss)
-    print(f"best activation {best_activation[0]}")
-    return model
-
-def opt_dense_units(model: tf.keras.models.Sequential, index, X, y, **kwargs):
-    model = utils.check_compilation(model, X, **kwargs)
-    if not isinstance(model.layers[index],tf.keras.layers.Dense):
-        raise KeyError(f"layer {model.layers[index]} is not a Dense layer.")
-    print(f"Optimizing dense units at index {index}")
-    test_nodes = kwargs.get("test_nodes",_default_nodes.copy())
-    if not (isinstance(test_nodes, list)):
-        print("Invalid learning_rates in opt_dense_units: {test_nodes}. Expected list or numpy array.\n"+
-              "Continuing execution with default test_nodes {_default_nodes}")
-        test_nodes = _default_nodes.copy()
-    test_nodes.append(None)
-    test_nodes.append(model.layers[index].get_config().get("units"))
-    test_nodes = set(test_nodes)
-    test_nodes = sorted(test_nodes,key=lambda x : (x is None, x))
-    layer_configs = [layer.get_config() for layer in model.layers]
-    layers = utils.get_copy_of_layers(model.layers)
-    loss = model.loss
-    optimizer_type = model.optimizer.__class__
-    optimizer_config = model.optimizer.get_config()
-    get_optimizer = lambda : optimizer_type.from_config(optimizer_config)
-    results = list(range(len(test_nodes)))
-    best_metric = float("inf")
-    best_configuration = None
-    for i,node_amount in enumerate(test_nodes):
-        if node_amount is None:
-            curr_layer = layers.pop(index)
-            config = layer_configs.pop(index)
-        else:
-            layer_configs[index]["units"] = node_amount
-        
-        layers = utils.layers_from_configs(layers, layer_configs)
-        model = tf.keras.models.Sequential(layers)
-        model.build(np.shape(X))
-        model.compile(
-            optimizer=get_optimizer(),
-            loss=loss
-        )
-        metric = utils.test_learning_speed(model, X, y,**kwargs)
-        print(node_amount, metric)
-        results[i] = [node_amount,metric]
-        if metric<best_metric:
-            best_metric = metric
-            if best_configuration is None and node_amount is not None:
-                best_configuration = layers[index].get_config()
-            elif node_amount is None:
-                best_configuration = None
-            else:
-                best_configuration["units"] = node_amount
-        if node_amount is None:
-            layers.insert(index, curr_layer)
-            layer_configs.insert(index,config)
-    return_model = kwargs.get("return_model",True)
-    if not return_model:
-        return results
-    if best_configuration == None:
-        layer_configs.pop(index)
-        layers.pop(index)
-    else:
-        layer_configs[index] = best_configuration
-    layers = utils.layers_from_configs(layers, layer_configs)
-    model = tf.keras.models.Sequential(layers)
-    model.build(np.shape(X))
-    model.compile(optimizer=get_optimizer(),
-        loss=loss)
-    return model
-
-
-def opt_decay(model: tf.keras.models.Sequential,X,y,**kwargs):
-    model = utils.check_compilation(model, X, **kwargs)
-    decays = kwargs.get("decays",_default_decays.copy())
-    if not (isinstance(decays, list)) or 1 in decays or not all([isinstance(x, float) or isinstance(x, int) for x in decays]):
-        print(f"Invalid decay in opt_decay: {decays}. Expected list or numpy array.\n"+
-              f"Continuing execution with default decays {_default_decays}")
-        decays = _default_decays.copy()
-    optimizer_config = model.optimizer.get_config()
-    decays.append(optimizer_config.get("decay"))#0 if optimizer_config.get("decay") == 0.0 else optimizer_config.get("decay"))
-    decays = set(decays)
-    decays = sorted(decays)
-    get_optimizer = lambda : optimizer_type.from_config(optimizer_config)
-    return_metric = kwargs.get("return_metric",configurations.LEARNING_METRIC)
-    optimizer_type = model.optimizer.__class__
-    best_decay = 0
-    best_metric = float("inf")
-    results = list(range(len(decays)))
-    for i,decay in enumerate(decays):
-        optimizer_config["decay"] = decay
-        model.build(np.shape(X))
-        model.compile(optimizer=get_optimizer(),loss=model.loss)
-        metric = utils.test_learning_speed(model,X,y,**kwargs)
-        print(f"decay: {decay}, {return_metric}:{metric}")
-        results[i] = [decay,metric]
-        if(metric<best_metric):
-            best_metric = metric
-            best_decay = decay
-    return_model = kwargs.get("return_model",True)
-    if not return_model:
-        return results
-    optimizer_config["decay"] = best_decay
-    model.build(np.shape(X))
-    model.compile(optimizer=get_optimizer(),loss=model.loss)
     return model

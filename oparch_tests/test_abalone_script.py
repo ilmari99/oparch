@@ -25,28 +25,28 @@ print(f"Abalone samples: {np.shape(X)}")
 X,X_test,y,y_test = train_test_split(X,y,test_size=0.2)
 other_test=False
 if other_test:
-    layers = [tf.keras.layers.Dense(16,activation="relu"),
-          tf.keras.layers.Dense(8,activation="relu"),
-          tf.keras.layers.Dense(2,activation="relu"),
-          tf.keras.layers.Dense(1,activation="relu")]
+    layers = [tf.keras.layers.Dense(16),
+          tf.keras.layers.Dense(8),
+          tf.keras.layers.Dense(2),
+          tf.keras.layers.Dense(1)]
 else:
     layers = [tf.keras.layers.Dense(1),
           tf.keras.layers.Dense(1),
           tf.keras.layers.Dense(1),
           tf.keras.layers.Dense(1)]
 configs = opt.utils.add_seed_configs(opt.utils.get_layers_config(layers))#To add random seed 42 to each layer
-opt.utils.layers_from_configs(layers, configs)
+layers = opt.utils.layers_from_configs(layers, configs)
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
 
-cb_loss = opt.LossCallback.LossCallback()
+cb_loss = opt.LossCallback.LossCallback(early_stopping = False)
 hist = model.fit(
         X, y,
         epochs=10,
         verbose=1,
         validation_data=(X_test,y_test),
-        batch_size=64,
+        batch_size=16,
         callbacks=[cb_loss],
         shuffle=True,
         use_multiprocessing=True,
@@ -60,23 +60,26 @@ cb_loss.plot_loss()
 layers = opt.utils.get_copy_of_layers(layers)
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
-model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
-configurations.configure(samples=3000,epochs=1,batch_size=64,learning_metric="LAST_LOSS")
-#model = opt.opt_loss_fun(model, X, y) #The best seems to be logarithmic, so don't do this for better comparison
-model = opt.opt_all_units(model, X, y)
-model = opt.opt_all_activations(model, X, y)
-model = opt.opt_learning_rate(model, X, y)
-model = opt.opt_decay(model, X, y)
-cb_loss = opt.LossCallback.LossCallback()
+model.compile(optimizer=tf.keras.optimizers.Adam(),loss="mse")
+opt.set_default_misc(epochs=1,batch_size=16,learning_metric="LAST_LOSS",verbose=0, decimals=5)
+opt.set_default_intervals(rho=list(np.linspace(0.8,1,10,endpoint=True)))
+#model = opt.opt_loss_fun(model, X, y) #The fastest descending loss is logarithmic, so don't do this for better comparison plot
+model = opt.opt_all_layer_params(model, X, y, "units")
+model = opt.opt_all_layer_params(model, X, y, "activation")
+model = opt.opt_optimizer_parameter(model, X, y, "learning_rate")
+model = opt.opt_optimizer_parameter(model, X, y, "rho")
+model = opt.opt_optimizer_parameter(model, X, y, "decay")
+model = opt.opt_optimizer_parameter(model, X, y, "momentum")
+model = opt.opt_optimizer_parameter(model, X, y, "amsgrad")
+cb_loss = opt.LossCallback.LossCallback(early_stopping = False)
 hist = model.fit(
         X, y,
         epochs=10,
         verbose=1,
         validation_data=(X_test,y_test),
-        batch_size=64,
+        batch_size=16,
         callbacks=[cb_loss],
         shuffle=True,
-        use_multiprocessing=True,
 )
 cb_loss.plot_loss(new_figure=False)
 opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
