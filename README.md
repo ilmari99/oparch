@@ -8,15 +8,15 @@ DOCS:
 oparch.optimize:
 Commonly supported kwargs in functions in oparch.optimize
 --------------
-    return_metric(str) : Which metric to use to evaluate performance, default is value in oparch.configurations. LAST_LOSS usually outperforms others.
-    "return_model" : true or false, whether to return the model (true), or to return the tried values and results in a list of tuples (false): [(value,result),     (value1,result1)...]
-    samples : How many samples to use for the evaluation. Defaults to all.
-    validation_split : how many percent of the data to use for validation (only applicable if using an evaluation based on a metric calculated from validation set). Default 0.2.
-    epochs : How many times to go through the training data. Defaults to 5, however 1 should be used with slow computers or large datasets or models
-    batch_size : How many data pieces should be considered before calculating gradient. Default 32. If running out of memory, consider decreasing.
-    verbose : What should be reported to stdout. (Not implemented)
-    decimals : Up to how many decimal points should the evaluation metric be optimized. (Should perhaps be changed to apply to the metric, not to the result). Defaults to 5.
-    metrics(list) : which metrics should be used to compile the model. Defaults to ["accuracy"]
+return_metric(str) : Which metric to use to evaluate performance, default is value in oparch.configurations. LAST_LOSS usually outperforms others.
+"return_model" : true or false, whether to return the model (true), or to return the tried values and results in a list of tuples (false): [(value,result),     (value1,result1)...]
+samples : How many samples to use for the evaluation. Defaults to all.
+validation_split : how many percent of the data to use for validation (only applicable if using an evaluation based on a metric calculated from validation set). Default 0.2.
+epochs : How many times to go through the training data. Defaults to 5, however 1 should be used with slow computers or large datasets or models
+batch_size : How many data pieces should be considered before calculating gradient. Default 32. If running out of memory, consider decreasing.
+verbose : What should be reported to stdout. (Not implemented)
+decimals : Up to how many decimal points should the evaluation metric be optimized. (Should perhaps be changed to apply to the metric, not to the result). Defaults to 5.
+metrics(list) : which metrics should be used to compile the model. Defaults to ["accuracy"]
 
 
     opt_all_layer_params(model,X,y,param,**kwargs)
