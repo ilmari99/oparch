@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 import oparch
 import warnings
-elapsed_times = []
 
 _layer_keys = {
     "dense":["units","activation"],
@@ -41,7 +40,6 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     """
     tf.keras.backend.clear_session()
     oparch.__reset_random__()
-    allowed_kwargs = {"samples", "validation_split","return_metric","epochs","batch_size"}
     samples = kwargs.get("samples",configurations.get_default_misc("samples"))#TODO: If samples are configured during run time, the changes are not reflected
     validation_split = kwargs.get("validation_split",configurations.get_default_misc("validation_split"))
     return_metric = kwargs.get("return_metric",configurations.get_default_misc("learning_metric"))
@@ -112,7 +110,6 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
         callbacks=[cb_loss],
     )
     elapsed_time = time.time() - start
-    elapsed_times.append(elapsed_time)
     #print("Elapsed Time:",elapsed_time,"\n")
     #Load the weights the model had when it came to testing, so testing doesn't affect the model itself
     #Rebuild and recompile to give the model a clean optimizer
@@ -125,8 +122,8 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
     if return_value == None or np.isnan(return_value):
         if return_metric != "LAST_LOSS":
             print(f"Return metric {return_metric} is None. Using LAST_LOSS instead.")
-        return round(cb_loss.learning_metric.get("LAST_LOSS"),configurations.get_default_misc("decimals"))
-    return round(return_value,configurations.get_default_misc("decimals"))
+        return cb_loss.learning_metric.get("LAST_LOSS")
+    return return_value
 
 def grid_search(results : list,**kwargs):
     """
