@@ -21,7 +21,7 @@ abalone_features = abalone_train.copy()
 abalone_labels = abalone_features.pop("Age")
 X = np.array(abalone_features)
 y = np.array(abalone_labels)
-print(f"Abalone samples: {np.shape(X)}")
+print(f"Abalone samples: {np.shape(X)}") #>> Abalone samples: (3320, 7)
 X,X_test,y,y_test = train_test_split(X,y,test_size=0.2)
 other_test=False
 if other_test:
@@ -34,8 +34,8 @@ else:
           tf.keras.layers.Dense(1),
           tf.keras.layers.Dense(1),
           tf.keras.layers.Dense(1)]
-configs = opt.utils.add_seed_configs(opt.utils.get_layers_config(layers))#To add random seed 42 to each layer
-layers = opt.utils.layers_from_configs(layers, configs)
+configs = opt.utils.add_seed_configs(opt.utils.get_layers_config(layers))#To add random seed 42 to each layer, unnecessary, because this is done in an optimization function
+layers = opt.utils.layers_from_configs(layers, configs) #Copies layers
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss=tf.keras.losses.MeanSquaredError())
@@ -51,7 +51,7 @@ hist = model.fit(
         shuffle=True,
         use_multiprocessing=True,
 )
-opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
+opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric) #Creates dictionary and prints information about the model
 y_pred = model.predict(X_test)
 plt.figure()
 plt.plot(range(len(y_pred)),y_pred)
@@ -61,16 +61,14 @@ layers = opt.utils.get_copy_of_layers(layers)
 model = tf.keras.models.Sequential(layers)
 model.build(np.shape(X))
 model.compile(optimizer=tf.keras.optimizers.Adam(),loss="mse")
+#Change default settings ########## Important stuff
 opt.set_default_misc(epochs=1,batch_size=16,learning_metric="LAST_LOSS",verbose=0, decimals=5)
 opt.set_default_intervals(rho=list(np.linspace(0.8,1,10,endpoint=True)))
-#model = opt.opt_loss_fun(model, X, y) #The fastest descending loss is logarithmic, so don't do this for better comparison plot
-model = opt.opt_all_layer_params(model, X, y, "units")
-model = opt.opt_all_layer_params(model, X, y, "activation")
-model = opt.opt_optimizer_parameter(model, X, y, "learning_rate")
-model = opt.opt_optimizer_parameter(model, X, y, "rho")
-model = opt.opt_optimizer_parameter(model, X, y, "decay")
-model = opt.opt_optimizer_parameter(model, X, y, "momentum")
-model = opt.opt_optimizer_parameter(model, X, y, "amsgrad")
+#model = opt.opt_loss_fun(model, X, y) #The fastest descending loss is logarithmic, so don't do this for a better comparison plot
+model = opt.opt_all_layer_params(model, X, y, "units") #Grid search dense units with values [2**i for i in range(1,10)]
+model = opt.opt_all_layer_params(model, X, y, "activation") #Test all most common activation functions
+model = opt.opt_optimizer_parameter(model, X, y, ["learning_rate","rho","decay","momentum","amsgrad"]) #Use the TNC algorithm to optimize these
+################# important ends
 cb_loss = opt.LossCallback.LossCallback(early_stopping = False)
 hist = model.fit(
         X, y,

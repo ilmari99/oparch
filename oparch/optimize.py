@@ -6,9 +6,11 @@ from . import LossCallback as lcb
 from . import configurations
 import oparch
 import bisect
+from scipy import optimize as sci_opt
 
 def opt_all_layer_params(model,X,y,param,**kwargs):
-    """Loops over all layers and optimizes the given parameter if the layer has that parameter attribute.
+    """
+    Loops over all layers and optimizes the given parameter if the layer has that parameter attribute.
 
     Args:
         model (Sequential): The model which layers are looped through
@@ -17,7 +19,7 @@ def opt_all_layer_params(model,X,y,param,**kwargs):
         param (string): a string identifier
 
     Returns:
-        _type_: _description_
+        model: model with the optimal layers
     """
     kwargs["all"] = True
     layers = model.layers.copy()
@@ -29,87 +31,79 @@ def opt_all_layer_params(model,X,y,param,**kwargs):
         removed = len(model.layers) - orig_layers
     return model
 
-def opt_optimizer_parameter(model: tf.keras.models.Sequential, X: np.ndarray, y: np.ndarray,param: str,**kwargs) -> tf.keras.models.Sequential or list:
-    """
-    Optimizes an optimizer parameter such as learning_rate, decay or whatever. Uses enhancing to find the best parameter.
-    Only finds the first minima. If learning_metric has a local minima, narrows the search and starts again.
-    Stops when the locally optimal parameter is found at either the parameter bounds or at the first local minima.
-    
-    Returns the model compiled with the optimized parameter.
-    If there is a small fault in the call, returns the unchanged model.
-    
-    Args:
-        model (tf.keras.models.Sequential): Sequential model, compiled or with loss function and optimizer as kwargs
-        X (np.ndarray): numpy array
-        y (np.ndarray): numpy array
-        param (str): string identifier of the parameter, for ex "learning_rate"
-
-    Returns:
-        tf.keras.models.Sequential or list: _description_
-    """    
+def opt_optimizer_parameter(model: tf.keras.models.Sequential, X: np.ndarray, y: np.ndarray,param: list,**kwargs) -> tf.keras.models.Sequential or list:  
     oparch.__reset_random__()
     utils.check_types((model,tf.keras.models.Sequential),
                    (X,np.ndarray),
                    (y,np.ndarray),
-                   (param,str)
+                   (param,list)
                    )
     # Checks that the model can be compiled and hasn't been trained before
     model = utils.check_compilation(model, X, **kwargs)
     print(f"Optimizing '{param}' for {model.optimizer}...")
-    if not hasattr(model.optimizer,param):
-        warnings.warn(f"{model.optimizer} doesn't have '{param}' attribute.")
-        #print(f"{model.optimizer} doesn't have '{param}' attribute.")
-        return model
+    for p in param:
+        if not hasattr(model.optimizer,p):
+            print(f"{model.optimizer} doesn't have '{p}' attribute. Removing {p} from optimizable params")
+            param.pop(param.index(p))
     return_metric = kwargs.get("return_metric",configurations.get_default_misc("learning_metric"))
+    decimals = kwargs.get("decimals",configurations.get_default_misc("decimals"))
+    maxiters = kwargs.get("maxiter",configurations.get_default_misc("maxiter"))
     if "RELATIVE" in return_metric:
         epochs = kwargs.get("epochs", configurations.get_default_misc("epochs"))
         if epochs < 2:
             kwargs["epochs"] = 2
-    vals = kwargs.get(param,configurations.get_default_interval(param))
-    if vals is None:
-        warnings.warn(f"Parameter '{param}' doesn't have default values and none were specified.",
-              "Specify the testable values with adding an argument with the values to be tested.",
-              f"For example: opt_layer(....., {param}=[0.1,0.01,0.005])")
-        #print(f"Parameter '{param}' doesn't have default values and none were specified.",
-        #      "Specify the testable values with adding an argument with the values to be tested.",
-        #      f"For example: opt_layer(....., {param}=[0.1,0.01,0.005])")
-        return model
     optimizer_config = model.optimizer.get_config()
     optimizer_type = model.optimizer.__class__
     get_optimizer = lambda : optimizer_type.from_config(optimizer_config)
-    curr_param = optimizer_config.get(param)
-    decimals = kwargs.get("decimals",configurations.get_default_misc("decimals"))
-    #if curr_param not in vals:#curr_param not in vals:
-    #    vals.append(curr_param)
-    vals = set(vals)
-    vals = sorted(vals)
+    curr_params = [optimizer_config.get(p) for p in param]
+    bounds = [(0,1) for _ in curr_params]
     results = []
     i = 0
-    while vals:
-        val = vals.pop(0)
-        optimizer_config[param] = val
-        model.compile(optimizer=get_optimizer(),loss=model.loss)
-        metric = utils.test_learning_speed(model,X,y,**kwargs)
-        print(f"{param:<16}{val:<16}{return_metric:<16}{metric:<16}")
-        bisect.insort(results,(round(val,decimals),round(metric,decimals)),key=lambda x: x[0] if x[0] is not None else -float("inf"))
-        #results.append((round(val,decimals),round(metric,decimals)))
-        i = i + 1
-        new_vals = utils.grid_search(results,**kwargs)
-        if new_vals:
-            vals = new_vals
-        #if not vals or (i > 4 and results[-1][1] - results[-4][1] == 0):
-            #break
-    utils.plot_results(results)
+    def try_vals(vals):
+        for p,v in zip(param,vals):
+            optimizer_config[p] = v
+        optimizer = get_optimizer()
+        model.compile(optimizer=optimizer,loss=model.loss)
+        metric = utils.test_learning_speed(model,X,y,**kwargs,early_stopping=False)
+        for p,v in zip(param,vals):
+            print(f"{p:<16}{v:<16}")
+        print(f"{return_metric:<16}{metric:<16}\n")
+        results.append((vals,metric))
+        
+        if len(results) > 5:
+            assert round(metric,decimals) != round(results[-1][1],decimals)
+        #bisect.insort(results,(round(val,decimals),round(metric,decimals)),key=lambda x: x[0] if x[0] is not None else -float("inf"))
+        return metric
+    algorithm_kwargs = {
+        "method" : kwargs.get("algo",configurations.get_default_misc("optimizing_algo")),
+        "bounds" : bounds,
+        "options" : {"maxiter": maxiters},
+    }
+    if algorithm_kwargs["method"] not in ["TNC","L-BFGS-B","SLSQP"]:
+        print(f"Incorrect optimizing algorithm. Changing '{algorithm_kwargs['algo']}' to '{configurations.get_default_misc('optimizing_algo')}'")
+        algorithm_kwargs["methdod"] = configurations.get_default_misc("optimizing_algo")
+    try:
+        sci_opt.minimize(try_vals, curr_params, 
+                     **algorithm_kwargs,
+                     )
+    except AssertionError:
+        pass
+    print(f"Finding minima took {len(results)} iterations.")
+    #utils.plot_results(results)
     return_model = kwargs.get("return_model",True)
     if return_model:
         best = min(results,key=lambda x : x[1])
-        optimizer_config[param] = best[0]
+        print("Best found combination:")
+        for p,v in zip(param,best[0]):
+            optimizer_config[p] = v
+            print(f"{p:<16}{v:<16}")
+        print(f"{return_metric:<16}{best[1]:<16}")
         model.compile(optimizer=get_optimizer(),loss=model.loss)
-        print("results:",results)
         return model
     else:
         return results
-    
+
+
 def opt_layer_parameter(model,X,y,index,param,**kwargs):
     """
     Optimizes a layer parameter such as pool_size, units.
@@ -224,7 +218,7 @@ def opt_layer_parameter(model,X,y,index,param,**kwargs):
 def opt_loss_fun(model: tf.keras.models.Sequential,X,y,**kwargs):
     """
     Optimizes the loss function by minizing the slope.
-    WARNING: Might not work correctly, because incentivizes the loss to start as very large.
+    WARNING: Might not work correctly, because could incentivize to start with a large loss.
     """
     model = utils.check_compilation(model, X, **kwargs)
     return_metric = kwargs.get("return_metric")
