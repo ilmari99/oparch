@@ -34,7 +34,8 @@ layers = [
     Dense(64,activation=tf.keras.activations.relu),
     Dense(64),
     Dense(10,activation=tf.keras.activations.softmax),
-]'''
+]
+'''
 layers = [
     Conv2D(32,(3,3)),
     MaxPooling2D((2,2)),
@@ -48,7 +49,6 @@ layers = [
     Dense(1),
     Dense(10,activation=tf.keras.activations.softmax),
 ]
-
 layers = opt.utils.get_copy_of_layers(layers)
 
 model = tf.keras.models.Sequential(layers)
@@ -57,29 +57,26 @@ model.compile(optimizer=tf.keras.optimizers.RMSprop(0.001),
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=False),
               metrics=["accuracy"])
 cb = opt.LossCallback.LossCallback(early_stopping=True)
-"""
+
 model.fit(
     X,y,
     epochs=2,
-    batch_size=64,
+    batch_size=128,
     callbacks=[cb],
     validation_data=(X_test,y_test)
 )
 opt.utils.print_model(model,learning_metrics=cb.learning_metric)
 cb.plot_loss(new_figure=False, show=False)
-"""
-opt.set_default_misc(samples=6000,epochs=1,batch_size=64,learning_metric="LAST_LOSS",verbose=0)
+
+opt.set_default_misc(samples=6000,epochs=1,batch_size=128,learning_metric="NEG_ACCURACY",verbose=0)
 #model = opt.opt_loss_fun(model, X, y,categorical=True)
-model = opt.opt_all_layer_params(model, X, y, "strides")
-model = opt.opt_optimizer_parameter(model, X, y, "learning_rate")
-model = opt.opt_all_layer_params(model, X, y, "units")
+model = opt.opt_optimizer_parameter(model, X, y, ["learning_rate","decay","momentum","rho"])
 model = opt.opt_all_layer_params(model, X, y, "filters")
-model = opt.opt_all_layer_params(model, X, y, "pool_size")
-model = opt.opt_all_layer_params(model, X, y, "kernel_size")
+model = opt.opt_all_layer_params(model, X, y, "units")
+#model = opt.opt_all_layer_params(model, X, y, "pool_size")
+#model = opt.opt_all_layer_params(model, X, y, "kernel_size")
 model = opt.opt_all_layer_params(model, X, y, "activation")
-model = opt.opt_optimizer_parameter(model, X, y, "decay")
-model = opt.opt_optimizer_parameter(model, X, y, "momentum")
-model = opt.opt_optimizer_parameter(model, X, y, "rho")
+model = opt.opt_optimizer_parameter(model, X, y, ["learning_rate","decay","momentum","rho"])
 
 
 model.compile(optimizer=model.optimizer,loss=model.loss,metrics=["accuracy"]) #Must be compiled again if you want to add metrics
@@ -87,14 +84,12 @@ cb = opt.LossCallback.LossCallback()
 hist = model.fit(
     X,y,
     epochs=2,
-    batch_size=64,
+    batch_size=128,
     callbacks=[cb],
     validation_data=(X_test,y_test)
 )
-print(opt.utils.elapsed_times)
 cb.plot_loss(show=True,new_figure=False)
 plt.figure()
-plt.plot(opt.utils.elapsed_times,range(len(opt.utils.elapsed_times)))
 plt.show()
 opt.utils.print_model(model,learning_metrics=cb.learning_metric)
 
