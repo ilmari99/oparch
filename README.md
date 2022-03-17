@@ -17,7 +17,6 @@ Commonly supported kwargs in functions in oparch.optimize
     verbose : What should be reported to stdout. (Not implemented)
     decimals : Up to how many decimal points should the evaluation metric be optimized. (Should perhaps be changed to apply to the metric, not to the result). Defaults to 5.
     metrics(list) : which metrics should be used to compile the model. Defaults to ["accuracy"]
--------------
 
 
     opt_all_layer_params(model,X,y,param,**kwargs)
