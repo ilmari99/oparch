@@ -9,17 +9,17 @@ Note: This is a personal project, and thats what it looks like.
 Functions for optimization are in the oparch.optimize.py file
 Commonly supported ´kwargs´ for all optimization functions are:
 
-´return_metric(str)´ : Which metric to use to evaluate performance, default is value in oparch.configurations. LAST_LOSS usually outperforms others.
-´return_model"(boolean)´ : true or false, whether to return the model (true), or to return the tried values and results in a list of tuples (false): [(value,result),     (value1,result1)...]
-´samples(int)´ : How many samples to use for the evaluation. Defaults to all if not specified or incorrect.
-´validation_split(float[0...1])´ : how many percent of the data to use for validation (only applicable if using an evaluation based on a metric calculated from validation set). Default 0.2.
-´epochs(int)´ : How many times to go through the training data. Defaults to 5, however 1 should be used with slow computers or large datasets or models
-´batch_size(int)´ : How many data pieces should be considered before calculating gradient. Default 32. If running out of memory, consider decreasing.
-´verbose(int[0..3])´ : What should be reported to stdout. (Not implemented)
-´decimals(int)´ : Up to how many decimal points should the evaluation metric be optimized. (Should perhaps be changed to apply to the metric, not to the result). Defaults to 5.
-´metrics(list(int or float))´ : which metrics should be used to compile the model. Defaults to ["accuracy"]
+`return_metric(str)` : Which metric to use to evaluate performance, default is value in oparch.configurations. LAST_LOSS usually outperforms others.
+`return_model"(boolean)` : true or false, whether to return the model (true), or to return the tried values and results in a list of tuples (false): [(value,result),     (value1,result1)...]
+`samples(int)` : How many samples to use for the evaluation. Defaults to all if not specified or incorrect.
+`validation_split(float[0...1])` : how many percent of the data to use for validation (only applicable if using an evaluation based on a metric calculated from validation set). Default 0.2.
+`epochs(int)` : How many times to go through the training data. Defaults to 5, however 1 should be used with slow computers or large datasets or models
+`batch_size(int)` : How many data pieces should be considered before calculating gradient. Default 32. If running out of memory, consider decreasing.
+`verbose(int[0..3])` : What should be reported to stdout. (Not implemented)
+`decimals(int)` : Up to how many decimal points should the evaluation metric be optimized. (Should perhaps be changed to apply to the metric, not to the result). Defaults to 5.
+`metrics(list(int or float))` : which metrics should be used to compile the model. Defaults to ["accuracy"]
 
-´´´
+```
 opt_all_layer_params(model,X,y,param,**kwargs)
     Loops over all layers and optimizes the given parameter with a global grid search (because often has multiple minimas)
     if the layer has that parameter attribute.
