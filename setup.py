@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-
+import oparch
 with open("README.md", "r") as readme_file:
     readme = readme_file.read()
 
@@ -7,7 +7,7 @@ requirements = ["keras~=2.7", "matplotlib~=3.5", "numpy>=1.2", "tensorflow>=2.5"
 
 setup(
     name="oparch",
-    version="0.0.1",
+    version=oparch.version(),
     author="Ilmari Vahteristo",
     author_email="i.vahteristo@gmail.com",
     description="first package",

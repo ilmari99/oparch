@@ -10,10 +10,13 @@ import tensorflow as tf
 import matplotlib.pyplot
 import sklearn
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+__VERSION = "0.0.1"
 def __reset_random__():
     np.random.seed(seed=42) #Also sets sk.learn random number
     tf.random.set_seed(42)
     random.seed(42)
+def version():
+    return __VERSION
 __reset_random__()
