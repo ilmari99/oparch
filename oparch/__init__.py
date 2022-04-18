@@ -1,13 +1,14 @@
 import oparch
 from oparch import optimize, optimize_utils, LossCallback, configurations
 from oparch.optimize import *
-from oparch.configurations import set_default_misc, set_default_intervals
+from oparch.configurations import set_default_misc, set_default_intervals, get_default_misc, get_default_interval
 import os
 import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot
 import sklearn
 import random
+# LOCAL TODO: For some reason, only uses GPU, if CUDA console logging is on
 #os.environ["CUDA_VISIBLE_DEVICES"] = ""
 #os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 __VERSION = "0.0.1"
