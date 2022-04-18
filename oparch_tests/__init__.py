@@ -15,6 +15,6 @@ import tensorflow as tf
 import matplotlib.pyplot
 import sklearn
 import random
-os.environ["CUDA_VISIBLE_DEVICES"] = ""
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
+#os.environ["CUDA_VISIBLE_DEVICES"] = ""
+#os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 oparch.__reset_random__()
