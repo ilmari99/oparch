@@ -1,6 +1,3 @@
-import unittest
-import tensorflow as tf
-import matplotlib.pyplot as plt
 """
 This file contains tests for general execution related functionality. Such as:
 - GPU availability
@@ -8,6 +5,21 @@ This file contains tests for general execution related functionality. Such as:
 - Importing
 - 
 """
+def add_local_oparch_path():
+    """ To use he local version of oparch, add the local path to the system path.
+    Adds the location where the script is executed to the system path.
+    """
+    import sys
+    from pathlib import Path
+    path_root = Path(__file__).parents[1]
+    sys.path.insert(0, str(path_root))
+if __name__=="__main__":
+    # If run as main, add local path to system path
+    add_local_oparch_path()
+import unittest
+import tensorflow as tf
+import matplotlib.pyplot as plt
+import oparch
 
 class test_exec(unittest.TestCase):
     def setUp(self) -> None:
@@ -30,7 +42,6 @@ class test_exec(unittest.TestCase):
         plt.close("all") # TODO
     
     def test_importing_is_clear(self):
-        import oparch
         oparch.optimize_utils.check_types((1,int),("str",str))
 
 
