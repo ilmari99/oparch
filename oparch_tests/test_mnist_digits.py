@@ -1,8 +1,15 @@
-if __name__ == "__main__":
-    from pathlib import Path
+def add_local_oparch_path():
+    """ To use he local version of oparch, add the local path to the system path.
+    Adds the location where the script is executed to the system path.
+    """
     import sys
+    from pathlib import Path
     path_root = Path(__file__).parents[1]
-    sys.path.append(str(path_root))
+    sys.path.insert(0, str(path_root))
+
+if __name__ == "__main__":
+    add_local_oparch_path()
+
 import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,6 +21,7 @@ from oparch import LossCallback
 import pandas as pd
 import time
 from tensorflow.keras.layers import Dense, Conv2D, Flatten, MaxPooling2D
+print("Num of GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
 (X,y),(X_test,y_test) = mnist.load_data()
 X = X.reshape(-1,28,28,1)
 X_test = X_test.reshape(-1,28,28,1)
@@ -21,21 +29,7 @@ X_test = X_test.reshape(-1,28,28,1)
 #X_test = X_test.astype('float32') / 255
 X = X/255
 X_test = X_test/255
-'''
-layers = [
-    Conv2D(64,(5,5),strides=(1,1)),
-    MaxPooling2D((2,1),strides=(2,1)),
-    Conv2D(64, (3,3),strides=(1,1)),
-    MaxPooling2D((2,1),strides=(2,2)),
-    Conv2D(64,(3,3),strides=(1,1)),
-    Flatten(),
-    Dense(1),
-    Dense(1),
-    Dense(64,activation=tf.keras.activations.relu),
-    Dense(64),
-    Dense(10,activation=tf.keras.activations.softmax),
-]
-'''
+
 layers = [
     Conv2D(32,(3,3)),
     MaxPooling2D((2,2)),

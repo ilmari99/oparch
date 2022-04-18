@@ -1,9 +1,7 @@
-from . import optimize
-from . import optimize_utils
-from . import LossCallback
-from . import configurations
-from .optimize import *
-from .configurations import set_default_misc, set_default_intervals
+import oparch
+from oparch import optimize, optimize_utils, LossCallback, configurations
+from oparch.optimize import *
+from oparch.configurations import set_default_misc, set_default_intervals
 import os
 import numpy as np
 import tensorflow as tf

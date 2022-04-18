@@ -1,7 +1,6 @@
 import tensorflow as tf
 import warnings
 import numpy as np
-
 default_misc = {
     "image_size":(180,180), #Default image_size
     "batch_size": 32, #default batch_size
@@ -13,7 +12,6 @@ default_misc = {
     "decimals" : 5, #Decimal points to round to
     "maxiter":50, #maximum iterations per optimizing call
     "optimizing_algo":"TNC", #Default optimizing algorithm
-    
     
 }
 default_intervals = {
