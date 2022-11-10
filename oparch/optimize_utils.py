@@ -108,6 +108,7 @@ def test_learning_speed(model: tf.keras.models.Sequential, X: np.ndarray,
         validation_data=validation_data,
         batch_size=batch_size,
         callbacks=[cb_loss],
+        shuffle=False,
     )
     elapsed_time = time.time() - start
     #print("Elapsed Time:",elapsed_time,"\n")
@@ -185,7 +186,7 @@ def layers_from_configs(layers: list,configs: list):
     """    
     configs = add_seed_configs(configs)
     if isinstance(layers,tf.keras.models.Sequential):
-        layers = model.layers
+        layers = layers.layers
     new_layers = [layer.__class__.from_config(config) for layer,config in zip(layers, configs)]
     return new_layers
 
