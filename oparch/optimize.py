@@ -7,6 +7,7 @@ from . import configurations
 import oparch
 import bisect
 from scipy import optimize as sci_opt
+import itertools as it
 
 def opt_all_layer_params(model,X,y,param,**kwargs):
     """
@@ -69,9 +70,9 @@ def opt_optimizer_parameter(model: tf.keras.models.Sequential, X: np.ndarray, y:
             print(f"{p:<16}{v:<16}")
         print(f"{return_metric:<16}{metric:<16}\n")
         results.append((vals,metric))
-        
         if len(results) > 5:
-            assert round(metric,decimals) != round(results[-1][1],decimals)
+            nmetrics = [round(result[-1],decimals) for result in results[-6:]]
+            assert len(set(nmetrics)) > 1
         #bisect.insort(results,(round(val,decimals),round(metric,decimals)),key=lambda x: x[0] if x[0] is not None else -float("inf"))
         return metric
     algorithm_kwargs = {
@@ -79,7 +80,7 @@ def opt_optimizer_parameter(model: tf.keras.models.Sequential, X: np.ndarray, y:
         "bounds" : bounds,
         "options" : {"maxiter": maxiters},
     }
-    if algorithm_kwargs["method"] not in ["TNC","L-BFGS-B","SLSQP"]:
+    if algorithm_kwargs["method"] not in ["TNC","L-BFGS-B","SLSQP","Nelder-Mead"]:
         print(f"Incorrect optimizing algorithm. Changing '{algorithm_kwargs['algo']}' to '{configurations.get_default_misc('optimizing_algo')}'")
         algorithm_kwargs["methdod"] = configurations.get_default_misc("optimizing_algo")
     try:
@@ -87,6 +88,7 @@ def opt_optimizer_parameter(model: tf.keras.models.Sequential, X: np.ndarray, y:
                      **algorithm_kwargs,
                      )
     except AssertionError:
+        print("Exited through own condition")
         pass
     print(f"Finding minima took {len(results)} iterations.")
     #utils.plot_results(results)
@@ -98,6 +100,7 @@ def opt_optimizer_parameter(model: tf.keras.models.Sequential, X: np.ndarray, y:
             optimizer_config[p] = v
             print(f"{p:<16}{v:<16}")
         print(f"{return_metric:<16}{best[1]:<16}")
+        oparch.__reset_random__()
         model.compile(optimizer=get_optimizer(),loss=model.loss)
         return model
     else:
