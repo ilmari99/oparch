@@ -74,7 +74,8 @@ if __name__ == "__main__":
     model.build(np.shape(x_train))
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.009, amsgrad=False),
-        loss=tf.keras.losses.MeanAbsoluteError()
+        loss=tf.keras.losses.Hinge()
+        #loss=tf.keras.losses.LogCosh() #Gives perhaps a little better results on the rare values
         )
     cb_loss = opt.LossCallback.LossCallback(early_stopping = False)
     print("Num of GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -119,9 +120,10 @@ if __name__ == "__main__":
     y_test = round(8*y_test)
     #print("Predictions:",preds)
     #print("Observations",y_test)
-    
-    print("Neural network pedictions",Counter(preds.to_numpy().flatten()).items())
-    print("Actual values",Counter(y_test.to_numpy().flatten()).items())
+    pred_count = Counter(preds.to_numpy().flatten())
+    obs_count = Counter(y_test.to_numpy().flatten())
+    print("Neural network pedictions",pred_count.items())
+    print("Actual values",obs_count.items())
     count = 0
     for obs, pred in zip(y_test.values,preds.values):
         if int(obs) == int(pred):
@@ -132,8 +134,10 @@ if __name__ == "__main__":
     #print("Errors:",errs)
     #ax.scatter(y_test,errs)
     bins = list(range(9))
-    ax.hist(y_test,bins=bins,label="Observations")
-    ax.hist(preds,bins=bins,label="Predictions")
+    ax.bar(list(obs_count.keys()),list(obs_count.values()),label="Observations")
+    ax.bar(pred_count.keys(),pred_count.values(),label="Predictions")
+    #ax.hist(y_test,bins=bins,label="Observations")
+    #ax.hist(preds,bins=bins,label="Predictions")
     ax.legend()
     fig, ax = plt.subplots()
     ax.hist(errs,label="Errors")
