@@ -50,18 +50,20 @@ if __name__ == "__main__":
     x_train,x_test, y_train, y_test = train_test_split(exog,endog,test_size=0.25,random_state=42)
     # multiple values in train set
     train = pd.concat([x_train,y_train],axis=1)
-    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([3/8]),ntimes=8)
+    train = train[(np.abs(scipy.stats.zscore(train)) < 3).any(axis=1)]
+    #print(train)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([3/8]),ntimes=6)
     train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([4/8]),ntimes=2)
-    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([1]),ntimes=7)
-    #train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([7/8]),ntimes=1)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([1]),ntimes=5)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([7/8]),ntimes=1)
     y_train = train.pop("quality")
     x_train = train
-    
     
     x_train = np.array(x_train)
     x_test = np.array(x_test)
     y_train = np.array(y_train)
     y_test = np.array(y_test)
+    
     layers=[
         tf.keras.layers.Dense(30,activation="linear"),
         tf.keras.layers.Dense(512,activation="relu"),
@@ -69,22 +71,33 @@ if __name__ == "__main__":
         tf.keras.layers.Dense(256,activation="linear"),
         tf.keras.layers.Dense(1,"sigmoid"),
         ]
+    """
+    layers = [
+        tf.keras.layers.Dense(30,activation="linear"),
+        tf.keras.layers.Dense(10,activation="relu"),
+        tf.keras.layers.Dropout(0.01),
+        tf.keras.layers.Dense(10,activation="elu"),
+        tf.keras.layers.Dense(10,activation="linear"),
+        tf.keras.layers.Dense(1,"sigmoid"),
+    ]
+    """
     layers = opt.utils.get_copy_of_layers(layers)
     model = tf.keras.models.Sequential(layers)
     model.build(np.shape(x_train))
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.009, amsgrad=False),
-        loss=tf.keras.losses.Hinge()
+        #loss=tf.keras.losses.Hinge()
         #loss=tf.keras.losses.LogCosh() #Gives perhaps a little better results on the rare values
+        loss=tf.keras.losses.MeanSquaredError()
         )
     cb_loss = opt.LossCallback.LossCallback(early_stopping = False)
     print("Num of GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
     hist = model.fit(
         x_train, y_train,
-        epochs=50,
+        epochs=120,
         verbose=1,
         validation_data=(x_test,y_test),
-        batch_size=512,
+        batch_size=128,
         callbacks=[cb_loss],
     )
     """
@@ -92,27 +105,29 @@ if __name__ == "__main__":
     opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
     
     cb_loss.plot_loss(new_figure=True, show=False)
-    opt.set_default_misc(epochs=30,batch_size=128,learning_metric="VALIDATION_LOSS",verbose=0,validation_split=0.25)
+    opt.set_default_misc(epochs=100,batch_size=128,learning_metric="VALIDATION_LOSS",verbose=0,validation_split=0.25)
 
     #model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay"],maxiters=30)#,"momentum","rho","epsilon"
     #model = opt.opt_loss_fun(model,x_train,y_train,categrical=False,return_metric=None)
+    #model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay","beta_1","beta_2","amsgrad"],algo="Nelder-Mead")
     model = opt.opt_all_layer_params(model, x_train, y_train, "units")
-    model = opt.opt_all_layer_params(model, x_train, y_train, "rate")
+    #model = opt.opt_all_layer_params(model, x_train, y_train, "rate")
     model = opt.opt_all_layer_params(model, x_train, y_train, "activation")
-    model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay","beta_1","beta_2","amsgrad"],maxiters=30)
+    model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay","beta_1","beta_2","amsgrad"],algo="Nelder-Mead")
+    #model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay","beta_1","beta_2","amsgrad"],maxiters=30)
     
     model.compile(optimizer=model.optimizer,loss=model.loss,metrics=["accuracy"])
 
     cb = opt.LossCallback.LossCallback()
     hist = model.fit(
         x_train,y_train,
-        epochs=50,
-        batch_size=256,
+        epochs=120,
+        batch_size=128,
         callbacks=[cb],
         validation_data=(x_test,y_test)
     )
     cb.plot_loss(show=False,new_figure=True)
-    """
+    #"""
     
     preds = pd.DataFrame(model.predict(x_test))
     preds = round(8*preds)
