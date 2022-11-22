@@ -40,10 +40,11 @@ def multip_rows(df,ntimes=3,mask_cond=None):
 def add_rows(x_train, y_train):
     # multiple values in train set
     train = pd.concat([x_train,y_train],axis=1)
-    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([3/8]),ntimes=8)
-    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([4/8]),ntimes=2)
-    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([1]),ntimes=7)
-    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([7/8]),ntimes=1)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([3/9]),ntimes=6) #13
+    #train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([7/9]),ntimes=4)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([1]),ntimes=10)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([8/9]),ntimes=2)
+    #train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([2/8]),ntimes=10)
     y_train = train.pop("quality")
     x_train = train
     return x_train, y_train
@@ -52,12 +53,11 @@ if __name__ == "__main__":
     # Read and handle data
     #df = pd.read_csv("/home/ilmari/python/Late-tyokurssi/viinidata/winequality-red.csv",sep=";")
     try:
-        df = pd.read_csv("C:\\Users\\ivaht\\Desktop\\PYTHON\\Python_scripts\\Late-tyokurssi\\viinidata\\winequality-red.csv",sep=";")
+        df = pd.read_csv("C:\\Users\\ivaht\\Desktop\\PYTHON\\Python_scripts\\Late-tyokurssi\\viinidata\\winequality-white.csv",sep=";")
     except FileNotFoundError:
-        df = pd.read_csv("/home/ilmari/python/Late-tyokurssi/viinidata/winequality-red.csv",sep=";")
-    #weirds = df[(np.abs(scipy.stats.zscore(df)) >= 3).any(axis=1)]
-    #print(f"Found {len(weirds)} weird rows.")
-    #weirds = pd.concat([weirds,weirds.copy(),weirds.copy()])
+        df = pd.read_csv("/home/ilmari/python/Late-tyokurssi/viinidata/winequality-white.csv",sep=";")
+    print(df.describe())
+
     df = max_norm(df)
     endog = df.pop("quality")
     exog = max_norm(df)
@@ -66,35 +66,27 @@ if __name__ == "__main__":
     # multiple values in train set
     x_train, y_train = add_rows(x_train, y_train)
     
-    
     x_train = np.array(x_train)
     x_test = np.array(x_test)
     y_train = np.array(y_train)
     y_test = np.array(y_test)
     
     layers=[
-        tf.keras.layers.Dense(30,activation="linear"),
+        tf.keras.layers.Dense(45,activation="linear"),
+        tf.keras.layers.Dense(225,activation="relu"),
+        tf.keras.layers.Dense(39,activation="tanh"),
         tf.keras.layers.Dense(512,activation="relu"),
-        tf.keras.layers.Dense(8,activation="elu"),
-        tf.keras.layers.Dense(256,activation="linear"),
         tf.keras.layers.Dense(1,"sigmoid"),
         ]
-    """
-    layers = [
-        tf.keras.layers.Dense(32,activation="linear"),
-        tf.keras.layers.Dense(512,activation="relu"),
-        tf.keras.layers.Dense(85,activation="tanh"),
-        tf.keras.layers.Dense(10,activation="linear"),
-        tf.keras.layers.Dense(1,activation="sigmoid"),
-    ]
-    """
+    
     layers = opt.utils.get_copy_of_layers(layers)
     model = tf.keras.models.Sequential(layers)
     model.build(np.shape(x_train))
     model.compile(
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.009, amsgrad=True),
-        ##loss=tf.keras.losses.Hinge()
-        loss=tf.keras.losses.LogCosh() #Gives perhaps a little better results on the rare values
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.0095, amsgrad=True),
+        #loss=tf.keras.losses.Hinge()
+        #loss=tf.keras.losses.LogCosh() #Gives perhaps a little better results on the rare values
+        loss=tf.keras.losses.MeanAbsoluteError()
         )
     cb_loss = opt.LossCallback.LossCallback(early_stopping = False)
     print("Num of GPUs Available: ", len(tf.config.list_physical_devices('GPU')))
@@ -106,20 +98,20 @@ if __name__ == "__main__":
         batch_size=128,
         callbacks=[cb_loss],
     )
-    model.save("red-wine-model.h5",overwrite=False)
+    model.save("white-wine-model.h5",overwrite=False)
     """
     #model.save("red-wine-model.h5",overwrite=False)
     opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
-    
     cb_loss.plot_loss(new_figure=True, show=False)
-    opt.set_default_misc(epochs=20,batch_size=128,learning_metric="VALIDATION_LOSS",verbose=0,validation_split=0.25)
+    
+    opt.set_default_misc(epochs=20,batch_size=256,learning_metric="VALIDATION_LOSS",verbose=0,validation_split=0.25)
 
-    #model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay"],maxiters=30)#,"momentum","rho","epsilon"
-    #model = opt.opt_loss_fun(model,x_train,y_train,categrical=False,return_metric=None)
-    model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay"],algo="Nelder-Mead")
-    model = opt.opt_all_layer_params(model, x_train, y_train, "activation")
-    model = opt.opt_all_layer_params(model, x_train, y_train, "units")
-    #model = opt.opt_all_layer_params(model, x_train, y_train, "rate")
+    #model = opt.opt_loss_fun(model,x_train,y_train,categorical=False,return_metric=None)
+    for i in range(5):
+        model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay"],algo="Nelder-Mead")
+        model = opt.opt_all_layer_params(model, x_train, y_train, "activation")
+        model = opt.opt_all_layer_params(model, x_train, y_train, "units")
+    
     
     model.compile(optimizer=model.optimizer,loss=model.loss,metrics=["accuracy"])
 
@@ -127,7 +119,7 @@ if __name__ == "__main__":
     hist = model.fit(
         x_train,y_train,
         epochs=20,
-        batch_size=128,
+        batch_size=256,
         callbacks=[cb],
         validation_data=(x_test,y_test)
     )
@@ -142,7 +134,7 @@ if __name__ == "__main__":
     #print("Observations",y_test)
     pred_count = Counter(preds.to_numpy().flatten())
     obs_count = Counter(y_test.to_numpy().flatten())
-    print("Neural network pedictions",pred_count.items())
+    print("Neural network predictions",pred_count.items())
     print("Actual values",obs_count.items())
     count = 0
     for obs, pred in zip(y_test.values,preds.values):
