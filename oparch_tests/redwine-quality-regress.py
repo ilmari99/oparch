@@ -51,7 +51,10 @@ def add_rows(x_train, y_train):
 if __name__ == "__main__":
     # Read and handle data
     #df = pd.read_csv("/home/ilmari/python/Late-tyokurssi/viinidata/winequality-red.csv",sep=";")
-    df = pd.read_csv("C:\\Users\\ivaht\\Desktop\\PYTHON\\Python_scripts\\Late-tyokurssi\\viinidata\\winequality-red.csv",sep=";")
+    try:
+        df = pd.read_csv("C:\\Users\\ivaht\\Desktop\\PYTHON\\Python_scripts\\Late-tyokurssi\\viinidata\\winequality-red.csv",sep=";")
+    except FileNotFoundError:
+        df = pd.read_csv("/home/ilmari/python/Late-tyokurssi/viinidata/winequality-red.csv",sep=";")
     #weirds = df[(np.abs(scipy.stats.zscore(df)) >= 3).any(axis=1)]
     #print(f"Found {len(weirds)} weird rows.")
     #weirds = pd.concat([weirds,weirds.copy(),weirds.copy()])
@@ -90,7 +93,7 @@ if __name__ == "__main__":
     model.build(np.shape(x_train))
     model.compile(
         optimizer=tf.keras.optimizers.Adam(learning_rate=0.009, amsgrad=True),
-        #loss=tf.keras.losses.Hinge()
+        ##loss=tf.keras.losses.Hinge()
         loss=tf.keras.losses.LogCosh() #Gives perhaps a little better results on the rare values
         )
     cb_loss = opt.LossCallback.LossCallback(early_stopping = False)
