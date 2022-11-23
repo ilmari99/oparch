@@ -41,7 +41,10 @@ def multip_rows(df,ntimes=3,mask_cond=None):
 if __name__ == "__main__":
     # Read and handle data
     # Read and separate data
-    df = pd.read_csv("/home/ilmari/python/Late-tyokurssi/viinidata/winequality-red.csv",sep=";")
+    try:
+        df = pd.read_csv("/home/ilmari/python/Late-tyokurssi/viinidata/winequality-red.csv",sep=";")
+    except FileNotFoundError:
+        df = pd.read_csv("C:\\Users\\ivaht\\Desktop\\PYTHON\\Python_scripts\\Late-tyokurssi\\viinidata\\winequality-red.csv", sep=";")
     fig, ax = plt.subplots()
     ax.hist(df["quality"],bins=6,label="Full data hist")
     ax.legend()
@@ -57,15 +60,16 @@ if __name__ == "__main__":
     train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([3]),ntimes=6)
     train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([4]),ntimes=2)
     train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([8]),ntimes=4)
-    #train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([7/8]),ntimes=1)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([7/8]),ntimes=1)
     y_train = train.pop("quality")
+    x_train = train
     
     # Convert the goal values to one-hot-encoded
     y_train = indices_to_one_hot(y_train,10)
     y_test = indices_to_one_hot(y_test,10)
     
     #Normalize the X values
-    x_train = max_norm(train)
+    x_train = max_norm(x_train)
     x_test = max_norm(x_test)
     
     #Convert to numpy arrays
@@ -74,12 +78,10 @@ if __name__ == "__main__":
     y_train = np.array(y_train)
     y_test = np.array(y_test)
     layers=[
-        tf.keras.layers.Dense(512,activation="linear"),
-        tf.keras.layers.Dense(206,activation="elu"),
-        tf.keras.layers.Dropout(0.05),
+        tf.keras.layers.Dense(32,activation="relu"),
+        tf.keras.layers.Dense(242,activation="elu"),
         tf.keras.layers.Dense(10,activation="linear"),
-        tf.keras.layers.Dropout(0.02),
-        tf.keras.layers.Dense(12,activation="linear"),
+        tf.keras.layers.Dense(8,activation="linear"),
         tf.keras.layers.Dense(10,"softmax"),
         ]
     layers = opt.utils.get_copy_of_layers(layers)
@@ -88,8 +90,8 @@ if __name__ == "__main__":
     # NOTE: This is very sensitive to randomness :(
     model.compile(
         #optimizer=tf.keras.optimizers.RMSprop(learning_rate=0.025375482208110867, decay=0.14532385839041545,momentum=0,rho=0,epsilon=10**-7),
-        optimizer=tf.keras.optimizers.Adam(learning_rate=0.007763,decay=0.0003867, beta_1=0.77275,beta_2 = 0.997,epsilon = 10**-7),
-        loss=tf.keras.losses.CategoricalCrossentropy(),
+        optimizer=tf.keras.optimizers.Adam(learning_rate=0.006568,decay=0.00044,beta_1=0.91,beta_2 = 0.99,amsgrad=True),
+        loss=tf.keras.losses.CategoricalCrossentropy(reduction=tf.keras.losses.Reduction.SUM),
         metrics=["accuracy"]
         )
     cb_loss = opt.LossCallback.LossCallback(early_stopping = False)
@@ -99,19 +101,21 @@ if __name__ == "__main__":
         epochs=20,
         verbose=1,
         validation_data=(x_test,y_test),
-        batch_size=256,
+        batch_size=128,
         callbacks=[cb_loss],
     )
-    """
+    #"""
     #model.save("red-wine-model.h5",overwrite=False)
     opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
     
     #cb_loss.plot_loss(new_figure=True, show=False)
-    opt.set_default_misc(epochs=20,batch_size=256,learning_metric="NEG_VALIDATION_ACCURACY",verbose=0,validation_split=0.25)
-    model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay","beta_1","beta_2","amsgrad"],algo="Nelder-Mead")
-    model = opt.opt_all_layer_params(model, x_train, y_train, "units")
-    model = opt.opt_all_layer_params(model, x_train, y_train, "rate")
-    model = opt.opt_all_layer_params(model, x_train, y_train, "activation")
+    opt.set_default_misc(epochs=20,batch_size=128,learning_metric="NEG_VALIDATION_ACCURACY",verbose=0,validation_split=0.25)
+    for i in range(1):
+        pass
+        #model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay","beta_1","beta_2"],algo="Nelder-Mead")
+        #model = opt.opt_all_layer_params(model, x_train, y_train, "units")
+    #model = opt.opt_all_layer_params(model, x_train, y_train, "rate")
+        #model = opt.opt_all_layer_params(model, x_train, y_train, "activation")
     #model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay","beta_1","beta_2","amsgrad"])
     
     model.compile(optimizer=model.optimizer,loss=model.loss,metrics=["accuracy"])
