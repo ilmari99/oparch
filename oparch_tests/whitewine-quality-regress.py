@@ -11,6 +11,8 @@ import scipy
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 import oparch as opt
+import smogn
+import random
 
 def indices_to_one_hot(data, nb_classes):
     """Convert an iterable of indices to one-hot encoded labels."""
@@ -49,6 +51,26 @@ def add_rows(x_train, y_train):
     x_train = train
     return x_train, y_train
 
+def add_noise(y_train,y_test):
+    def func(x):
+        pm = 1 if random.random() > 0.5 and x < 1 else -1
+        noise = random.random() / 21
+        return x + pm*noise
+    y_train = y_train.apply(func)
+    y_test = y_test.apply(func)
+    return y_train, y_test
+
+def do_smogn(*dfs,y_header = "quality",smoter_kwargs = {}):
+    column_sets = [list(pd.DataFrame(df).columns.values) for df in dfs]
+    column_sets.reverse()
+    x_train = pd.concat(dfs,axis=1)
+    x_train = x_train.reset_index()
+    x_train = smogn.smoter(data=x_train, y=y_header,**smoter_kwargs)
+    x_train.pop("index")
+    dfs = [x_train.drop(cols,axis=1) for cols in column_sets]
+    dfs = tuple(dfs)
+    return dfs
+
 if __name__ == "__main__":
     # Read and handle data
     #df = pd.read_csv("/home/ilmari/python/Late-tyokurssi/viinidata/winequality-red.csv",sep=";")
@@ -64,7 +86,10 @@ if __name__ == "__main__":
     # Create partition, here y_* is still in integers
     x_train,x_test, y_train, y_test = train_test_split(exog,endog,test_size=0.25,random_state=42)
     # multiple values in train set
-    x_train, y_train = add_rows(x_train, y_train)
+    y_train, y_test = add_noise(y_train,y_test)
+    x_train, y_train = do_smogn(x_train,y_train,y_header = "quality")#add_rows(x_train, y_train)
+    
+    
     
     x_train = np.array(x_train)
     x_test = np.array(x_test)
@@ -98,16 +123,16 @@ if __name__ == "__main__":
         batch_size=128,
         callbacks=[cb_loss],
     )
-    model.save("white-wine-model.h5",overwrite=False)
-    """
+    #model.save("white-wine-model.h5",overwrite=False)
+    #"""
     #model.save("red-wine-model.h5",overwrite=False)
     opt.utils.print_model(model,learning_metrics=cb_loss.learning_metric)
     cb_loss.plot_loss(new_figure=True, show=False)
     
-    opt.set_default_misc(epochs=20,batch_size=256,learning_metric="VALIDATION_LOSS",verbose=0,validation_split=0.25)
+    opt.set_default_misc(epochs=20,batch_size=128,learning_metric="VALIDATION_LOSS",verbose=0,validation_split=0.25)
 
     #model = opt.opt_loss_fun(model,x_train,y_train,categorical=False,return_metric=None)
-    for i in range(5):
+    for i in range(1):
         model = opt.opt_optimizer_parameter(model, x_train, y_train, ["learning_rate","decay"],algo="Nelder-Mead")
         model = opt.opt_all_layer_params(model, x_train, y_train, "activation")
         model = opt.opt_all_layer_params(model, x_train, y_train, "units")
@@ -119,7 +144,7 @@ if __name__ == "__main__":
     hist = model.fit(
         x_train,y_train,
         epochs=20,
-        batch_size=256,
+        batch_size=128,
         callbacks=[cb],
         validation_data=(x_test,y_test)
     )

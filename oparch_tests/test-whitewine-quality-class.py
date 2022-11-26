@@ -32,9 +32,21 @@ def multip_rows(df,ntimes=3,mask_cond=None):
         mask_cond = lambda df : (np.abs(scipy.stats.zscore(df)) >= 3).any(axis=1)
     weirds = df[mask_cond(df)]
     print(f"Found {len(weirds)} weird rows.")
-    weirds = pd.concat([weirds,weirds.copy()])
+    weirds = pd.concat([weirds.copy() for _ in range(ntimes)])
     df = pd.concat([df,weirds])
+    print(f"Added {len(weirds)} rows.")
     return df
+
+def add_rows(x_train, y_train):
+    # multiple values in train set
+    train = pd.concat([x_train,y_train],axis=1)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([3/8]),ntimes=8)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([4/8]),ntimes=2)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([1]),ntimes=7)
+    train = multip_rows(train,mask_cond=lambda df : df["quality"].isin([7/8]),ntimes=1)
+    y_train = train.pop("quality")
+    x_train = train
+    return x_train, y_train
 
 if __name__ == "__main__":
     # Read and handle data
